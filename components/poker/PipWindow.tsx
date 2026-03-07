@@ -182,6 +182,35 @@ export function PipWindow({ state, availableActions, onAction, onNewHand, isOpen
         })}
       </div>
 
+      {/* Winner banner */}
+      {state.winners && state.winners.length > 0 && (state.phase === "showdown" || state.phase === "idle") && (
+        <div style={{ padding: "6px 14px", borderTop: "1px solid rgba(201,168,76,0.2)" }}>
+          {state.winners.map((w, i) => {
+            const wPlayer = state.players.find(p => p.id === w.playerId);
+            const isHumanWinner = wPlayer?.isHuman;
+            return (
+              <div key={i} style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "6px 10px", borderRadius: 8,
+                background: isHumanWinner ? "rgba(134,239,172,0.12)" : "rgba(255,255,255,0.05)",
+                border: `1px solid ${isHumanWinner ? "rgba(134,239,172,0.4)" : "rgba(201,168,76,0.2)"}`,
+                marginBottom: i < state.winners.length - 1 ? 4 : 0,
+              }}>
+                <span style={{ fontSize: 14 }}>{isHumanWinner ? "🏆" : "🎴"}</span>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 12, fontWeight: 900, color: isHumanWinner ? "#86efac" : "#fbbf24" }}>
+                    {wPlayer?.name ?? "Unknown"} wins ${w.amount.toLocaleString()}
+                  </span>
+                  {w.handDesc && (
+                    <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 1 }}>{w.handDesc}</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Action bar */}
       <div style={{ marginTop: "auto", padding: "8px 0 10px" }}>
         {isHumanTurn ? (
