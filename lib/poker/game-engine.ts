@@ -97,6 +97,62 @@ export function createInitialState(mode: GameMode = "normal"): GameState {
   };
 }
 
+// ─── Resume from saved state ────────────────────────────────────────────────
+export interface SavedGameState {
+  players: { id: string; name: string; stack: number; personality: AIPersonality | null; aiModel: string | null; isEliminated: boolean }[];
+  handNumber: number;
+  dealerIndex: number;
+}
+
+export function createStateFromSave(save: SavedGameState, mode: GameMode): GameState {
+  const players: Player[] = save.players.map((sp, i) => ({
+    id: sp.id,
+    name: sp.name,
+    avatar: sp.id === "human" ? "YOU" : sp.name[0],
+    stack: sp.stack,
+    holeCards: [],
+    isHuman: sp.id === "human",
+    isFolded: false,
+    isAllIn: false,
+    streetBet: 0,
+    totalBetThisHand: 0,
+    seatIndex: i,
+    lastAction: null,
+    lastActionAmount: 0,
+    personality: sp.personality,
+    aiModel: sp.aiModel,
+    winProbability: 0,
+    isDealer: false,
+    isSB: false,
+    isBB: false,
+    isActive: false,
+    isEliminated: sp.isEliminated,
+    handDescription: null,
+  }));
+
+  return {
+    phase: "idle",
+    players,
+    communityCards: [],
+    mainPot: 0,
+    sidePots: [],
+    currentBet: 0,
+    minRaiseBy: 100,
+    toAct: [],
+    currentPlayerIndex: 0,
+    dealerIndex: save.dealerIndex,
+    smallBlind: 50,
+    bigBlind: 100,
+    deck: [],
+    handNumber: save.handNumber,
+    mode,
+    winners: [],
+    lastAction: null,
+    isWaitingForAI: false,
+    showdownReveal: false,
+  };
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 function getNextActiveIdx(players: Player[], from: number): number {
   const n = players.length;

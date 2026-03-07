@@ -1,8 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GameMode } from "@/lib/poker/types";
+
+interface ResumableSession {
+  id: string;
+  mode: GameMode;
+  startedAt: string;
+  handsPlayed: number;
+  finalStack: number;
+  startStack: number;
+}
 
 const MODES: { id: GameMode; label: string; description: string; color: string; icon: string }[] = [
   {
@@ -35,10 +44,20 @@ const MODES: { id: GameMode; label: string; description: string; color: string; 
   },
 ];
 
+const MODE_ICONS: Record<GameMode, string> = { normal: "♠", vision: "👁", advisor: "💡", training: "🎯" };
+
 export default function Home() {
   const router = useRouter();
   const [selected, setSelected] = useState<GameMode>("normal");
   const [loading, setLoading] = useState(false);
+  const [resumable, setResumable] = useState<ResumableSession[]>([]);
+
+  useEffect(() => {
+    fetch("/api/session")
+      .then(r => r.json())
+      .then(data => setResumable(data.sessions ?? []))
+      .catch(() => {});
+  }, []);
 
   const startGame = async () => {
     setLoading(true);
@@ -148,6 +167,46 @@ export default function Home() {
           ))}
         </div>
       </div>
+
+      {/* Resume sessions */}
+      {resumable.length > 0 && (
+        <div className="w-full max-w-2xl mb-8">
+          <h2 className="text-xs font-black text-gray-500 uppercase tracking-[0.3em] mb-4 text-center">
+            Resume a Previous Game
+          </h2>
+          <div className="flex flex-col gap-2">
+            {resumable.slice(0, 5).map(s => {
+              const profit = s.finalStack - s.startStack;
+              const profitStr = profit >= 0 ? `+$${profit.toLocaleString()}` : `-$${Math.abs(profit).toLocaleString()}`;
+              const date = new Date(s.startedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => router.push(`/game?mode=${s.mode}&session=${s.id}&resume=true`)}
+                  className="flex items-center justify-between px-4 py-3 rounded-xl ring-1 ring-white/10 hover:ring-yellow-500/50 hover:bg-white/5 transition-all text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{MODE_ICONS[s.mode]}</span>
+                    <div>
+                      <div className="text-white text-sm font-bold capitalize">{s.mode} mode</div>
+                      <div className="text-gray-500 text-xs">{date} · {s.handsPlayed} hands played</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <div className="text-xs text-gray-400">Stack</div>
+                      <div className="text-sm font-bold" style={{ color: profit >= 0 ? "#4ade80" : "#f87171" }}>
+                        ${s.finalStack.toLocaleString()} <span className="text-xs font-normal">({profitStr})</span>
+                      </div>
+                    </div>
+                    <div className="text-yellow-500 text-xs font-bold uppercase tracking-wider">Resume →</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Start button */}
       <button

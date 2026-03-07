@@ -37,6 +37,8 @@ interface MobileGameViewProps {
   enableAdvisor?: boolean;
   onToggleAdvisor?: () => void;
   handSummary?: HandSummaryData | null;
+  pendingAction?: "fold" | "check" | null;
+  onSetPendingAction?: (a: "fold" | "check" | null) => void;
 }
 
 export function MobileGameView({
@@ -50,6 +52,8 @@ export function MobileGameView({
   enableAdvisor,
   onToggleAdvisor,
   handSummary,
+  pendingAction,
+  onSetPendingAction,
 }: MobileGameViewProps) {
   const [showReview, setShowReview] = useState(false);
 
@@ -59,6 +63,8 @@ export function MobileGameView({
   const showOdds = state.mode !== "normal";
   const isAtShowdown = state.phase === "showdown";
   const isIdle = state.phase === "idle";
+  const humanInHand = !!(human && !human.isFolded && !human.isEliminated);
+  const showPreAction = !isHumanTurn && !isIdle && !isAtShowdown && humanInHand && !!onSetPendingAction;
 
   return (
     <div style={{
@@ -336,11 +342,40 @@ export function MobileGameView({
             </button>
           </div>
         ) : (
-          <div style={{ textAlign: "center", padding: "14px", fontSize: 12, color: "#6b7280" }}>
-            {isAIThinking ? (
-              <span style={{ color: "#fbbf24", fontWeight: 700 }}>AI is thinking...</span>
-            ) : (
-              "Waiting for players..."
+          <div style={{ padding: "10px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ textAlign: "center", fontSize: 12, color: "#6b7280" }}>
+              {isAIThinking ? (
+                <span style={{ color: "#fbbf24", fontWeight: 700 }}>AI is thinking...</span>
+              ) : (
+                "Waiting for players..."
+              )}
+            </div>
+            {showPreAction && (
+              <div style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center" }}>
+                <span style={{ fontSize: 9, color: "#4b5563", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Pre-action:</span>
+                {(["fold", "check"] as const).map(action => (
+                  <button
+                    key={action}
+                    onClick={() => onSetPendingAction!(pendingAction === action ? null : action)}
+                    style={{
+                      padding: "5px 10px", borderRadius: 8,
+                      fontSize: 10, fontWeight: 700, cursor: "pointer",
+                      textTransform: "uppercase", letterSpacing: 1,
+                      background: pendingAction === action
+                        ? action === "fold" ? "rgba(239,68,68,0.25)" : "rgba(34,197,94,0.2)"
+                        : "rgba(255,255,255,0.05)",
+                      border: pendingAction === action
+                        ? action === "fold" ? "1px solid rgba(239,68,68,0.5)" : "1px solid rgba(34,197,94,0.4)"
+                        : "1px solid rgba(255,255,255,0.1)",
+                      color: pendingAction === action
+                        ? action === "fold" ? "#fca5a5" : "#86efac"
+                        : "#6b7280",
+                    }}
+                  >
+                    {action === "fold" ? "Fold" : "Check"}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         )}

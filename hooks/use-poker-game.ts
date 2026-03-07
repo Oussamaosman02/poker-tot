@@ -5,8 +5,8 @@ import {
   GameState, GameMode, PlayerAction, Player, Card,
 } from "@/lib/poker/types";
 import {
-  createInitialState, startHand, applyAction, getAvailableActions,
-  totalPot, getPositionLabel,
+  createInitialState, createStateFromSave, startHand, applyAction, getAvailableActions,
+  totalPot, getPositionLabel, SavedGameState,
 } from "@/lib/poker/game-engine";
 import { calculateOdds, preflopHandStrength } from "@/lib/poker/odds-calculator";
 import { evaluateBestHand } from "@/lib/poker/hand-evaluator";
@@ -53,13 +53,16 @@ interface HandRecord {
   pfr: boolean;
 }
 
-export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdvisor = false) {
-  const [gameState, setGameState] = useState<GameState>(() => createInitialState(mode));
+export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdvisor = false, resumeState: SavedGameState | null = null) {
+  const [gameState, setGameState] = useState<GameState>(() =>
+    resumeState ? createStateFromSave(resumeState, mode) : createInitialState(mode)
+  );
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [advisorHint, setAdvisorHint] = useState<string | null>(null);
   const [trainingFeedback, setTrainingFeedback] = useState<string | null>(null);
   const [handStartStack, setHandStartStack] = useState(10000);
   const [handSummary, setHandSummary] = useState<HandSummaryData | null>(null);
+  const [pendingAction, setPendingAction] = useState<"fold" | "check" | null>(null);
 
   // Track hand actions for stats
   const currentHandActions = useRef<{ street: string; action: string; amount: number }[]>([]);
@@ -226,6 +229,33 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
     }
   }, [gameState.phase]);
 
+  // ── Auto-execute pending pre-action when human's turn arrives ───────────
+  useEffect(() => {
+    if (!pendingAction) return;
+    const humanIdx = gameState.players.findIndex(p => p.isHuman);
+    if (humanIdx === -1) return;
+    const human = gameState.players[humanIdx];
+    if (!human.isActive || gameState.isWaitingForAI) return;
+
+    const actions = getAvailableActions(gameState, humanIdx);
+    if (pendingAction === "fold" && actions.canFold) {
+      setPendingAction(null);
+      setGameState(prev => {
+        const next = applyAction(prev, humanIdx, "fold");
+        return updateOdds(next);
+      });
+    } else if (pendingAction === "check" && actions.canCheck) {
+      setPendingAction(null);
+      setGameState(prev => {
+        const next = applyAction(prev, humanIdx, "check");
+        return updateOdds(next);
+      });
+    } else {
+      // Conditions changed (e.g. someone raised) — discard the pending action
+      setPendingAction(null);
+    }
+  }, [gameState.currentPlayerIndex, gameState.isWaitingForAI]);
+
   // ── Human Action ────────────────────────────────────────────────────────
   const humanAction = useCallback((action: PlayerAction, amount?: number) => {
     const humanIdx = gameState.players.findIndex(p => p.isHuman);
@@ -286,6 +316,7 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
     setTrainingFeedback(null);
     setAdvisorHint(null);
     setHandSummary(null);
+    setPendingAction(null);
 
     setGameState(prev => {
       const humanStack = prev.players.find(p => p.isHuman)?.stack ?? 10000;
@@ -388,7 +419,27 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
       communityCards: gameState.communityCards,
     });
 
-    if (sessionId) saveHand(gameState);
+    if (sessionId) {
+      saveHand(gameState);
+      // Persist game state so the session can be resumed later
+      const snapshot: SavedGameState = {
+        players: gameState.players.map(p => ({
+          id: p.id,
+          name: p.name,
+          stack: p.stack,
+          personality: p.personality,
+          aiModel: p.aiModel,
+          isEliminated: p.isEliminated,
+        })),
+        handNumber: gameState.handNumber,
+        dealerIndex: gameState.dealerIndex,
+      };
+      fetch("/api/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "save", sessionId, savedState: snapshot }),
+      }).catch(() => {});
+    }
   }, [gameState.phase]);
 
   const availableActions = (() => {
@@ -407,5 +458,7 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
     newHand,
     handSummary,
     totalPot: totalPot(gameState),
+    pendingAction,
+    setPendingAction,
   };
 }

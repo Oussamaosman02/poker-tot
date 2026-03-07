@@ -35,6 +35,7 @@ model Session {
   profit      Int       @default(0)
   finalStack  Int       @default(10000)
   startStack  Int       @default(10000)
+  savedState  String?
   hands       Hand[]
 }
 

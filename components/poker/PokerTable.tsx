@@ -40,6 +40,8 @@ interface PokerTableProps {
   enableAdvisor?: boolean;
   onToggleAdvisor?: () => void;
   handSummary?: HandSummaryData | null;
+  pendingAction?: "fold" | "check" | null;
+  onSetPendingAction?: (a: "fold" | "check" | null) => void;
 }
 
 export function PokerTable({
@@ -53,6 +55,8 @@ export function PokerTable({
   enableAdvisor,
   onToggleAdvisor,
   handSummary,
+  pendingAction,
+  onSetPendingAction,
 }: PokerTableProps) {
   const [pipOpen, setPipOpen] = useState(false);
   const [revealCards, setRevealCards] = useState(false);
@@ -85,6 +89,8 @@ export function PokerTable({
           enableAdvisor={enableAdvisor}
           onToggleAdvisor={onToggleAdvisor}
           handSummary={handSummary}
+          pendingAction={pendingAction}
+          onSetPendingAction={onSetPendingAction}
         />
       </div>
 
@@ -272,6 +278,32 @@ export function PokerTable({
                 "Waiting for players..."
               )}
             </div>
+            {/* Pre-action buttons — shown while AI acts and human is still in the hand */}
+            {!humanFolded && onSetPendingAction && (
+              <div className="flex gap-2 items-center">
+                <span className="text-[9px] text-gray-600 uppercase tracking-wider font-bold">Pre-action:</span>
+                {(["fold", "check"] as const).map(action => (
+                  <button
+                    key={action}
+                    onClick={() => onSetPendingAction(pendingAction === action ? null : action)}
+                    className="px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all"
+                    style={{
+                      background: pendingAction === action
+                        ? action === "fold" ? "rgba(239,68,68,0.25)" : "rgba(34,197,94,0.2)"
+                        : "rgba(255,255,255,0.05)",
+                      border: pendingAction === action
+                        ? action === "fold" ? "1px solid rgba(239,68,68,0.5)" : "1px solid rgba(34,197,94,0.4)"
+                        : "1px solid rgba(255,255,255,0.1)",
+                      color: pendingAction === action
+                        ? action === "fold" ? "#fca5a5" : "#86efac"
+                        : "#6b7280",
+                    }}
+                  >
+                    {action === "fold" ? "Fold" : "Check (if available)"}
+                  </button>
+                ))}
+              </div>
+            )}
             {/* Normal-mode overlays: shown while a hand is in progress */}
             {isNormalMode && (
               <div className="flex gap-2">
