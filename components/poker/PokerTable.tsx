@@ -9,7 +9,7 @@ import { PipWindow } from "./PipWindow";
 import { HandReviewModal } from "./HandReviewModal";
 import { MobileGameView } from "./MobileGameView";
 import { totalPot } from "@/lib/poker/game-engine";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { HandSummaryData } from "@/hooks/use-poker-game";
 
@@ -62,6 +62,10 @@ export function PokerTable({
   const [revealCards, setRevealCards] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const pipSupported = typeof window !== "undefined" && "documentPictureInPicture" in window;
+
+  useEffect(() => {
+    if (state.phase === "preflop") setRevealCards(false);
+  }, [state.phase]);
 
   const pot = totalPot(state);
   const isNormalMode = state.mode === "normal";
