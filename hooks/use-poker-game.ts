@@ -13,6 +13,27 @@ import { evaluateBestHand } from "@/lib/poker/hand-evaluator";
 import { cardToString } from "@/lib/poker/deck";
 import { playYourTurnSound, playHandEndSound } from "@/lib/audio";
 
+// ── Exported types ────────────────────────────────────────────────────────────
+
+export interface HandDecision {
+  street: string;
+  action: string;
+  amount: number;
+  advisorHint: string | null; // hint computed at decision time (always, regardless of mode)
+  isCorrect: boolean | null;  // null means no hint was available to compare
+}
+
+export interface HandSummaryData {
+  handNumber: number;
+  decisions: HandDecision[];
+  result: "won" | "lost" | "folded";
+  profitLoss: number;
+  score: number | null; // 0–100, null if no decisions had a hint
+  feedback: string;
+}
+
+// ── Internal ──────────────────────────────────────────────────────────────────
+
 interface HandRecord {
   handNumber: number;
   holeCards: string[];
@@ -36,9 +57,11 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
   const [advisorHint, setAdvisorHint] = useState<string | null>(null);
   const [trainingFeedback, setTrainingFeedback] = useState<string | null>(null);
   const [handStartStack, setHandStartStack] = useState(10000);
+  const [handSummary, setHandSummary] = useState<HandSummaryData | null>(null);
 
   // Track hand actions for stats
   const currentHandActions = useRef<{ street: string; action: string; amount: number }[]>([]);
+  const handDecisionsRef = useRef<HandDecision[]>([]);
   const humanPreFlopRaised = useRef(false);
   const humanVPIP = useRef(false);
   const advisorActionRef = useRef<string | null>(null);
@@ -60,12 +83,12 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
     return { ...state, players };
   }, []);
 
-  // ── Advisor hint ────────────────────────────────────────────────────────
-  const computeAdvisorHint = useCallback((state: GameState) => {
+  // ── Advisor hint — always computed, displayed based on mode ─────────────
+  const computeAdvisorHintValue = useCallback((state: GameState): string | null => {
     const humanIdx = state.players.findIndex(p => p.isHuman);
-    if (humanIdx === -1) return;
+    if (humanIdx === -1) return null;
     const human = state.players[humanIdx];
-    if (human.holeCards.length < 2) return;
+    if (human.holeCards.length < 2) return null;
 
     const actions = getAvailableActions(state, humanIdx);
     let strength = 0;
@@ -94,8 +117,7 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
       hint = actions.canCheck ? "Weak hand — check" : "Weak hand — fold";
     }
 
-    advisorActionRef.current = hint;
-    setAdvisorHint(hint);
+    return hint;
   }, []);
 
   // ── AI Turn ─────────────────────────────────────────────────────────────
@@ -171,11 +193,18 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
     }
   }, [gameState.isWaitingForAI, gameState.currentPlayerIndex, gameState.phase]);
 
-  // ── Compute advisor hint when human turn ────────────────────────────────
+  // ── Compute advisor hint when human's turn ──────────────────────────────
   useEffect(() => {
     const humanIdx = gameState.players.findIndex(p => p.isHuman);
-    if (humanIdx !== -1 && gameState.players[humanIdx].isActive && (mode === "advisor" || mode === "training" || enableAdvisor)) {
-      computeAdvisorHint(gameState);
+    const human = gameState.players[humanIdx];
+    if (humanIdx !== -1 && human?.isActive) {
+      const hint = computeAdvisorHintValue(gameState);
+      advisorActionRef.current = hint;
+      if (mode === "advisor" || mode === "training" || enableAdvisor) {
+        setAdvisorHint(hint);
+      } else {
+        setAdvisorHint(null);
+      }
     } else {
       setAdvisorHint(null);
     }
@@ -214,7 +243,12 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
     currentHandActions.current.push({ street, action, amount: amount ?? 0 });
     humanActionRef.current = action;
 
-    // Track per-decision correctness when advisor is active
+    // Record per-decision data (uses hint computed at turn start, always)
+    const hint = advisorActionRef.current;
+    const isCorrect = hint ? hint.toLowerCase().includes(action) : null;
+    handDecisionsRef.current.push({ street, action, amount: amount ?? 0, advisorHint: hint, isCorrect });
+
+    // Track per-decision correctness for training feedback (only when advisor displayed)
     if ((mode === "advisor" || mode === "training" || enableAdvisor) && advisorHint) {
       const correct = advisorHint.toLowerCase().includes(action);
       handDecisionsTotal.current += 1;
@@ -240,6 +274,7 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
   // ── Start New Hand ───────────────────────────────────────────────────────
   const newHand = useCallback(() => {
     currentHandActions.current = [];
+    handDecisionsRef.current = [];
     humanPreFlopRaised.current = false;
     humanVPIP.current = false;
     advisorActionRef.current = null;
@@ -248,6 +283,7 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
     handDecisionsCorrect.current = 0;
     setTrainingFeedback(null);
     setAdvisorHint(null);
+    setHandSummary(null);
 
     setGameState(prev => {
       const humanStack = prev.players.find(p => p.isHuman)?.stack ?? 10000;
@@ -265,7 +301,6 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
 
     const winner = state.winners.find(w => w.playerId === human.id);
     const result = human.isFolded ? "folded" : winner ? "won" : "lost";
-    const pot = winner ? winner.amount : 0;
     const profitLoss = winner ? winner.amount - handStartStack + human.stack : human.stack - handStartStack;
 
     const humanIdx = state.players.findIndex(p => p.isHuman);
@@ -307,11 +342,49 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
     }
   }, [sessionId, handStartStack]);
 
-  // Auto-save when showdown
+  // ── Build hand summary + auto-save at showdown ──────────────────────────
   useEffect(() => {
-    if (gameState.phase === "showdown" && sessionId) {
-      saveHand(gameState);
+    if (gameState.phase !== "showdown") return;
+
+    const human = gameState.players.find(p => p.isHuman);
+    const winner = gameState.winners.find(w => w.playerId === human?.id);
+    const result: "won" | "lost" | "folded" = human?.isFolded ? "folded" : winner ? "won" : "lost";
+    const profitLoss = winner
+      ? winner.amount - handStartStack + (human?.stack ?? 0)
+      : (human?.stack ?? 0) - handStartStack;
+
+    const decisions = [...handDecisionsRef.current];
+    const decidedWithHint = decisions.filter(d => d.isCorrect !== null);
+    const correctCount = decidedWithHint.filter(d => d.isCorrect).length;
+    const score = decidedWithHint.length > 0
+      ? Math.round((correctCount / decidedWithHint.length) * 100)
+      : null;
+
+    let feedback = "";
+    if (decisions.length === 0) {
+      feedback = "You didn't make any voluntary decisions this hand.";
+    } else if (score === null) {
+      feedback = "Enable the advisor to get decision scoring on future hands.";
+    } else if (score >= 80) {
+      feedback = "Excellent! Your decisions aligned well with optimal play.";
+    } else if (score >= 60) {
+      feedback = "Solid play overall. A few decisions could be sharper.";
+    } else if (score >= 40) {
+      feedback = "Some decisions differed from the advisor — check the log below.";
+    } else {
+      feedback = "Tough hand. The advisor suggested different plays — worth reviewing.";
     }
+
+    setHandSummary({
+      handNumber: gameState.handNumber,
+      decisions,
+      result,
+      profitLoss,
+      score,
+      feedback,
+    });
+
+    if (sessionId) saveHand(gameState);
   }, [gameState.phase]);
 
   const availableActions = (() => {
@@ -328,6 +401,7 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
     availableActions,
     humanAction,
     newHand,
+    handSummary,
     totalPot: totalPot(gameState),
   };
 }

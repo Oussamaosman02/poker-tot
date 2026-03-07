@@ -5,7 +5,9 @@ import { createPortal } from "react-dom";
 import { GameState, AvailableActions, PlayerAction } from "@/lib/poker/types";
 import { PlayingCard } from "./PlayingCard";
 import { ActionBar } from "./ActionBar";
+import { HandReviewModal } from "./HandReviewModal";
 import { totalPot } from "@/lib/poker/game-engine";
+import { HandSummaryData } from "@/hooks/use-poker-game";
 
 interface PipWindowProps {
   state: GameState;
@@ -14,9 +16,10 @@ interface PipWindowProps {
   onNewHand: () => void;
   isOpen: boolean;
   onClose: () => void;
+  handSummary?: HandSummaryData | null;
 }
 
-export function PipWindow({ state, availableActions, onAction, onNewHand, isOpen, onClose }: PipWindowProps) {
+export function PipWindow({ state, availableActions, onAction, onNewHand, isOpen, onClose, handSummary }: PipWindowProps) {
   const pipWindowRef = useRef<Window | null>(null);
   const [pipRoot, setPipRoot] = useState<HTMLElement | null>(null);
 
@@ -77,6 +80,8 @@ export function PipWindow({ state, availableActions, onAction, onNewHand, isOpen
   }, [isOpen]);
 
   if (!pipRoot) return null;
+
+  const [showReview, setShowReview] = useState(false);
 
   const human = state.players.find(p => p.isHuman);
   const pot = totalPot(state);
@@ -211,6 +216,11 @@ export function PipWindow({ state, availableActions, onAction, onNewHand, isOpen
         </div>
       )}
 
+      {/* Compact hand review (toggled in PiP) */}
+      {showReview && handSummary && (
+        <HandReviewModal summary={handSummary} onClose={() => setShowReview(false)} compact />
+      )}
+
       {/* Action bar */}
       <div style={{ marginTop: "auto", padding: "8px 0 10px" }}>
         {isHumanTurn ? (
@@ -222,21 +232,31 @@ export function PipWindow({ state, availableActions, onAction, onNewHand, isOpen
             isCompact
           />
         ) : state.phase === "idle" || state.phase === "showdown" ? (
-          <div style={{ textAlign: "center", padding: "6px 14px" }}>
+          <div style={{ padding: "6px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+            {state.phase === "showdown" && handSummary && (
+              <button
+                onClick={() => setShowReview(v => !v)}
+                style={{
+                  width: "100%", padding: "8px", borderRadius: 10,
+                  fontWeight: 900, fontSize: 10, letterSpacing: 2,
+                  textTransform: "uppercase",
+                  background: showReview ? "rgba(201,168,76,0.15)" : "rgba(255,255,255,0.06)",
+                  color: showReview ? "#c9a84c" : "#9ca3af",
+                  border: showReview ? "1px solid rgba(201,168,76,0.4)" : "1px solid rgba(255,255,255,0.1)",
+                  cursor: "pointer",
+                }}
+              >
+                📊 {showReview ? "Hide Review" : "Review Hand"}
+              </button>
+            )}
             <button
               onClick={onNewHand}
               style={{
-                width: "100%",
-                padding: "10px",
-                borderRadius: 10,
-                fontWeight: 900,
-                fontSize: 11,
-                letterSpacing: 2,
+                width: "100%", padding: "10px", borderRadius: 10,
+                fontWeight: 900, fontSize: 11, letterSpacing: 2,
                 textTransform: "uppercase",
                 background: "linear-gradient(135deg, #78350f, #c9a84c)",
-                color: "#000",
-                border: "none",
-                cursor: "pointer",
+                color: "#000", border: "none", cursor: "pointer",
               }}
             >
               {state.phase === "idle" ? "Start Game" : "Deal Next Hand"}

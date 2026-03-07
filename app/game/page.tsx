@@ -20,6 +20,7 @@ function GameInner() {
     availableActions,
     humanAction,
     newHand,
+    handSummary,
     totalPot: pot,
   } = usePokerGame(mode, sessionId, enableAdvisor);
 
@@ -34,6 +35,7 @@ function GameInner() {
       trainingFeedback={trainingFeedback}
       enableAdvisor={enableAdvisor}
       onToggleAdvisor={() => setEnableAdvisor(v => !v)}
+      handSummary={handSummary}
     />
   );
 }

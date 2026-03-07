@@ -6,9 +6,11 @@ import { CommunityCards } from "./CommunityCards";
 import { ActionBar } from "./ActionBar";
 import { InfoBar } from "./InfoBar";
 import { PipWindow } from "./PipWindow";
+import { HandReviewModal } from "./HandReviewModal";
 import { totalPot } from "@/lib/poker/game-engine";
 import { useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { HandSummaryData } from "@/hooks/use-poker-game";
 
 // Player seat positions around the oval — index = player seatIndex
 const SEAT_POSITIONS = [
@@ -36,6 +38,7 @@ interface PokerTableProps {
   trainingFeedback?: string | null;
   enableAdvisor?: boolean;
   onToggleAdvisor?: () => void;
+  handSummary?: HandSummaryData | null;
 }
 
 export function PokerTable({
@@ -48,9 +51,11 @@ export function PokerTable({
   trainingFeedback,
   enableAdvisor,
   onToggleAdvisor,
+  handSummary,
 }: PokerTableProps) {
   const [pipOpen, setPipOpen] = useState(false);
   const [revealCards, setRevealCards] = useState(false);
+  const [showReview, setShowReview] = useState(false);
   const pipSupported = typeof window !== "undefined" && "documentPictureInPicture" in window;
 
   const pot = totalPot(state);
@@ -172,17 +177,32 @@ export function PokerTable({
                 })}
               </div>
             )}
-            <button
-              onClick={onNewHand}
-              className="px-8 py-3 rounded-xl font-black uppercase tracking-widest text-sm transition-all active:scale-95 hover:brightness-110"
-              style={{
-                background: "linear-gradient(135deg, #78350f, #c9a84c)",
-                color: "black",
-                boxShadow: "0 4px 20px rgba(201,168,76,0.3)",
-              }}
-            >
-              Deal Next Hand
-            </button>
+            <div className="flex gap-3">
+              {handSummary && (
+                <button
+                  onClick={() => setShowReview(true)}
+                  className="px-5 py-3 rounded-xl font-black uppercase tracking-widest text-sm transition-all active:scale-95 hover:brightness-110"
+                  style={{
+                    background: "rgba(255,255,255,0.07)",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    color: "#e5e7eb",
+                  }}
+                >
+                  📊 Review Hand
+                </button>
+              )}
+              <button
+                onClick={onNewHand}
+                className="px-8 py-3 rounded-xl font-black uppercase tracking-widest text-sm transition-all active:scale-95 hover:brightness-110"
+                style={{
+                  background: "linear-gradient(135deg, #78350f, #c9a84c)",
+                  color: "black",
+                  boxShadow: "0 4px 20px rgba(201,168,76,0.3)",
+                }}
+              >
+                Deal Next Hand
+              </button>
+            </div>
           </div>
         ) : state.phase === "idle" ? (
           <div className="flex justify-center px-4">
@@ -277,7 +297,13 @@ export function PokerTable({
         onNewHand={onNewHand}
         isOpen={pipOpen}
         onClose={() => setPipOpen(false)}
+        handSummary={handSummary}
       />
+
+      {/* Hand review modal */}
+      {showReview && handSummary && (
+        <HandReviewModal summary={handSummary} onClose={() => setShowReview(false)} />
+      )}
     </div>
   );
 }
