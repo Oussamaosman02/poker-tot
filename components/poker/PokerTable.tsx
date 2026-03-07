@@ -7,6 +7,7 @@ import { ActionBar } from "./ActionBar";
 import { InfoBar } from "./InfoBar";
 import { PipWindow } from "./PipWindow";
 import { HandReviewModal } from "./HandReviewModal";
+import { MobileGameView } from "./MobileGameView";
 import { totalPot } from "@/lib/poker/game-engine";
 import { useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
@@ -70,10 +71,28 @@ export function PokerTable({
   const handlePip = useCallback(() => setPipOpen(prev => !prev), []);
 
   return (
-    <div
-      className="flex flex-col h-screen select-none"
-      style={{ background: "linear-gradient(180deg, #020810 0%, #050A14 50%, #020810 100%)" }}
-    >
+    <>
+      {/* ── Mobile layout (< md) ──────────────────────────────────── */}
+      <div className="md:hidden">
+        <MobileGameView
+          state={state}
+          availableActions={availableActions}
+          onAction={onAction}
+          onNewHand={onNewHand}
+          isAIThinking={isAIThinking}
+          advisorHint={advisorHint}
+          trainingFeedback={trainingFeedback}
+          enableAdvisor={enableAdvisor}
+          onToggleAdvisor={onToggleAdvisor}
+          handSummary={handSummary}
+        />
+      </div>
+
+      {/* ── Desktop layout (≥ md) ─────────────────────────────────── */}
+      <div
+        className="hidden md:flex flex-col h-screen select-none"
+        style={{ background: "linear-gradient(180deg, #020810 0%, #050A14 50%, #020810 100%)" }}
+      >
       {/* Table area */}
       <div className="flex-1 relative overflow-hidden">
         {/* Ambient glow */}
@@ -304,6 +323,7 @@ export function PokerTable({
       {showReview && handSummary && (
         <HandReviewModal summary={handSummary} onClose={() => setShowReview(false)} />
       )}
-    </div>
+      </div>
+    </>
   );
 }
