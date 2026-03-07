@@ -234,7 +234,7 @@ export function PokerTable({
               )}
             </div>
             {/* Normal-mode overlays: shown while a hand is in progress */}
-            {isNormalMode && state.phase !== "idle" && state.phase !== "showdown" && (
+            {isNormalMode && (
               <div className="flex gap-2">
                 {humanFolded && (
                   <button
