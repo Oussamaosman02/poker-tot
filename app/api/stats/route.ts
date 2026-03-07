@@ -54,6 +54,8 @@ export async function POST(req: NextRequest) {
         pfrHands: hand.pfr ? 1 : 0,
         advisorFollowed: hand.followedAdvisor ? 1 : 0,
         advisorShown: hand.advisorAction ? 1 : 0,
+        correctDecisions: hand.decisionsCorrect ?? 0,
+        totalDecisions: hand.decisionsTotal ?? 0,
       },
       update: {
         totalHands: { increment: 1 },
@@ -67,6 +69,8 @@ export async function POST(req: NextRequest) {
         pfrHands: { increment: hand.pfr ? 1 : 0 },
         advisorFollowed: { increment: hand.followedAdvisor ? 1 : 0 },
         advisorShown: { increment: hand.advisorAction ? 1 : 0 },
+        correctDecisions: { increment: hand.decisionsCorrect ?? 0 },
+        totalDecisions: { increment: hand.decisionsTotal ?? 0 },
       },
     });
 

@@ -18,6 +18,8 @@ interface Stats {
   advisorFollowed: number;
   advisorShown: number;
   sessionsPlayed: number;
+  correctDecisions: number;
+  totalDecisions: number;
 }
 
 interface Hand {
@@ -97,6 +99,9 @@ export default function StatsPage() {
   const advisorRate = stats?.advisorShown
     ? Math.round((stats.advisorFollowed / stats.advisorShown) * 100)
     : null;
+  const decisionAccuracy = stats?.totalDecisions
+    ? Math.round((stats.correctDecisions / stats.totalDecisions) * 100)
+    : null;
 
   if (loading) {
     return (
@@ -140,16 +145,19 @@ export default function StatsPage() {
           <>
             {/* Stat cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+              <StatCard label="Hands Played" value={`${stats.totalHands}`} sub={`${stats.sessionsPlayed} sessions`} color="#c9a84c" />
               <StatCard label="Win Rate" value={`${winRate}%`} sub={`${stats.handsWon}W / ${stats.handsLost}L`} color={winRate > 50 ? "#86efac" : winRate > 40 ? "#fcd34d" : "#fca5a5"} />
               <StatCard label="Total Profit" value={`${stats.totalProfit >= 0 ? "+" : ""}$${stats.totalProfit.toLocaleString()}`} color={stats.totalProfit >= 0 ? "#86efac" : "#fca5a5"} />
-              <StatCard label="VPIP" value={`${vpip}%`} sub="Voluntarily in pot" color="#c084fc" />
-              <StatCard label="PFR" value={`${pfr}%`} sub="Preflop raise %" color="#67e8f9" />
+              {decisionAccuracy !== null
+                ? <StatCard label="Decision Accuracy" value={`${decisionAccuracy}%`} sub={`${stats.correctDecisions}/${stats.totalDecisions} correct`} color={decisionAccuracy >= 70 ? "#86efac" : decisionAccuracy >= 50 ? "#fcd34d" : "#fca5a5"} />
+                : <StatCard label="VPIP" value={`${vpip}%`} sub="Voluntarily in pot" color="#c084fc" />
+              }
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+              <StatCard label="VPIP" value={`${vpip}%`} sub="Voluntarily in pot" color="#c084fc" />
+              <StatCard label="PFR" value={`${pfr}%`} sub="Preflop raise %" color="#67e8f9" />
               <StatCard label="Biggest Pot" value={`$${stats.biggestPot.toLocaleString()}`} />
               <StatCard label="Hands Folded" value={`${stats.handsFolded}`} sub={`${stats.totalHands ? Math.round(stats.handsFolded / stats.totalHands * 100) : 0}% fold rate`} />
-              {advisorRate !== null && <StatCard label="Advisor Follow" value={`${advisorRate}%`} sub="Times you followed hints" color="#86efac" />}
-              <StatCard label="Sessions" value={`${stats.sessionsPlayed}`} />
             </div>
 
             {/* Profit chart */}

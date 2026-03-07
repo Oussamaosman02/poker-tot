@@ -43,6 +43,8 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
   const humanVPIP = useRef(false);
   const advisorActionRef = useRef<string | null>(null);
   const humanActionRef = useRef<string | null>(null);
+  const handDecisionsTotal = useRef(0);
+  const handDecisionsCorrect = useRef(0);
 
   // ── Compute odds after each state update ────────────────────────────────
   const updateOdds = useCallback((state: GameState) => {
@@ -212,16 +214,20 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
     currentHandActions.current.push({ street, action, amount: amount ?? 0 });
     humanActionRef.current = action;
 
-    // Training mode feedback
-    if ((mode === "training" || enableAdvisor) && advisorHint) {
-      const advisorSuggested = advisorHint.toLowerCase().includes(action) ? action : null;
-      const followed = advisorSuggested === action;
-      if (!followed) {
-        setTrainingFeedback(`Advisor suggested: ${advisorHint}`);
-        setTimeout(() => setTrainingFeedback(null), 4000);
-      } else {
-        setTrainingFeedback("Good decision!");
-        setTimeout(() => setTrainingFeedback(null), 2000);
+    // Track per-decision correctness when advisor is active
+    if ((mode === "advisor" || mode === "training" || enableAdvisor) && advisorHint) {
+      const correct = advisorHint.toLowerCase().includes(action);
+      handDecisionsTotal.current += 1;
+      if (correct) handDecisionsCorrect.current += 1;
+
+      if (mode === "training" || enableAdvisor) {
+        if (!correct) {
+          setTrainingFeedback(`Advisor suggested: ${advisorHint}`);
+          setTimeout(() => setTrainingFeedback(null), 4000);
+        } else {
+          setTrainingFeedback("Good decision!");
+          setTimeout(() => setTrainingFeedback(null), 2000);
+        }
       }
     }
 
@@ -238,6 +244,8 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
     humanVPIP.current = false;
     advisorActionRef.current = null;
     humanActionRef.current = null;
+    handDecisionsTotal.current = 0;
+    handDecisionsCorrect.current = 0;
     setTrainingFeedback(null);
     setAdvisorHint(null);
 
@@ -289,6 +297,8 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
               : false,
             vpip: humanVPIP.current,
             pfr: humanPreFlopRaised.current,
+            decisionsTotal: handDecisionsTotal.current,
+            decisionsCorrect: handDecisionsCorrect.current,
           },
         }),
       });

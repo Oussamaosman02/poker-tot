@@ -18,9 +18,11 @@ model PlayerStats {
   biggestWin      Int      @default(0)
   vpipHands       Int      @default(0)
   pfrHands        Int      @default(0)
-  advisorFollowed Int      @default(0)
-  advisorShown    Int      @default(0)
-  sessionsPlayed  Int      @default(0)
+  advisorFollowed  Int      @default(0)
+  advisorShown     Int      @default(0)
+  sessionsPlayed   Int      @default(0)
+  correctDecisions Int      @default(0)
+  totalDecisions   Int      @default(0)
   updatedAt       DateTime @updatedAt
 }
 
