@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import { GameState, AvailableActions, PlayerAction } from "@/lib/poker/types";
 import { PlayingCard } from "./PlayingCard";
 import { ActionBar } from "./ActionBar";
-import { HandReviewModal } from "./HandReviewModal";
 import { totalPot } from "@/lib/poker/game-engine";
 import { HandSummaryData } from "@/hooks/use-poker-game";
 
@@ -216,9 +215,9 @@ export function PipWindow({ state, availableActions, onAction, onNewHand, isOpen
         </div>
       )}
 
-      {/* Compact hand review (toggled in PiP) */}
+      {/* Compact hand review (inline in PiP) */}
       {showReview && handSummary && (
-        <HandReviewModal summary={handSummary} onClose={() => setShowReview(false)} compact />
+        <PipReview summary={handSummary} />
       )}
 
       {/* Action bar */}
@@ -270,5 +269,78 @@ export function PipWindow({ state, availableActions, onAction, onNewHand, isOpen
       </div>
     </div>,
     pipRoot
+  );
+}
+
+// ── Compact review panel shown inline in the PiP window ──────────────────────
+
+const STREET_BG: Record<string, string> = {
+  preflop: "#4f46e5", flop: "#7c3aed", turn: "#0284c7", river: "#059669",
+};
+const ACTION_CLR: Record<string, string> = {
+  fold: "#ef4444", check: "#6b7280", call: "#60a5fa", raise: "#fbbf24", "all-in": "#f97316",
+};
+
+function PipReview({ summary }: { summary: HandSummaryData }) {
+  const { decisions, result, profitLoss, score } = summary;
+  const resultColor = result === "won" ? "#86efac" : result === "folded" ? "#9ca3af" : "#fca5a5";
+  const plLabel = profitLoss >= 0 ? `+$${profitLoss.toLocaleString()}` : `-$${Math.abs(profitLoss).toLocaleString()}`;
+  const scoreColor = score === null ? "#6b7280" : score >= 70 ? "#4ade80" : score >= 40 ? "#fbbf24" : "#f87171";
+  const scoreBarBg = score === null ? "#374151" : score >= 70 ? "#16a34a" : score >= 40 ? "#d97706" : "#dc2626";
+
+  return (
+    <div style={{ padding: "8px 14px 0", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+      {/* Score row */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+        <span style={{ fontSize: 11, fontWeight: 900, color: resultColor, textTransform: "uppercase" }}>
+          {result} {plLabel}
+        </span>
+        {score !== null && (
+          <>
+            <div style={{ flex: 1, height: 5, borderRadius: 3, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${score}%`, background: scoreBarBg, borderRadius: 3 }} />
+            </div>
+            <span style={{ fontSize: 10, fontWeight: 900, color: scoreColor, flexShrink: 0 }}>{score}/100</span>
+          </>
+        )}
+      </div>
+
+      {/* Decisions */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 8 }}>
+        {decisions.length === 0 ? (
+          <div style={{ fontSize: 10, color: "#4b5563" }}>No decisions recorded.</div>
+        ) : decisions.map((d, i) => (
+          <div key={i} style={{
+            display: "flex", alignItems: "flex-start", gap: 5,
+            padding: "4px 7px", borderRadius: 6,
+            background: d.isCorrect === false ? "rgba(239,68,68,0.07)" : d.isCorrect === true ? "rgba(74,222,128,0.07)" : "rgba(255,255,255,0.03)",
+            border: `1px solid ${d.isCorrect === false ? "rgba(239,68,68,0.2)" : d.isCorrect === true ? "rgba(74,222,128,0.2)" : "rgba(255,255,255,0.06)"}`,
+          }}>
+            <span style={{
+              fontSize: 8, background: STREET_BG[d.street] ?? "#374151",
+              color: "#fff", borderRadius: 3, padding: "1px 4px",
+              textTransform: "uppercase", fontWeight: 700, flexShrink: 0, marginTop: 2,
+            }}>
+              {d.street.substring(0, 3)}
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ color: ACTION_CLR[d.action] ?? "#e5e7eb", fontWeight: 900, fontSize: 11 }}>
+                  {d.action.toUpperCase()}{d.amount > 0 ? ` $${d.amount.toLocaleString()}` : ""}
+                </span>
+                {d.isCorrect !== null && (
+                  <span style={{ fontSize: 11, color: d.isCorrect ? "#4ade80" : "#f87171", marginLeft: "auto" }}>
+                    {d.isCorrect ? "✓" : "✗"}
+                  </span>
+                )}
+              </div>
+              {d.advisorHint && !d.isCorrect && (
+                <div style={{ fontSize: 9, color: "#6b7280", marginTop: 1 }}>💡 {d.advisorHint}</div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

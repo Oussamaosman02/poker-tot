@@ -30,6 +30,8 @@ export interface HandSummaryData {
   profitLoss: number;
   score: number | null; // 0–100, null if no decisions had a hint
   feedback: string;
+  holeCards: import("@/lib/poker/types").Card[];
+  communityCards: import("@/lib/poker/types").Card[];
 }
 
 // ── Internal ──────────────────────────────────────────────────────────────────
@@ -382,6 +384,8 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
       profitLoss,
       score,
       feedback,
+      holeCards: human?.holeCards ?? [],
+      communityCards: gameState.communityCards,
     });
 
     if (sessionId) saveHand(gameState);
