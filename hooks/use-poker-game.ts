@@ -229,33 +229,6 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
     }
   }, [gameState.phase]);
 
-  // ── Auto-execute pending pre-action when human's turn arrives ───────────
-  useEffect(() => {
-    if (!pendingAction) return;
-    const humanIdx = gameState.players.findIndex(p => p.isHuman);
-    if (humanIdx === -1) return;
-    const human = gameState.players[humanIdx];
-    if (!human.isActive || gameState.isWaitingForAI) return;
-
-    const actions = getAvailableActions(gameState, humanIdx);
-    if (pendingAction === "fold" && actions.canFold) {
-      setPendingAction(null);
-      setGameState(prev => {
-        const next = applyAction(prev, humanIdx, "fold");
-        return updateOdds(next);
-      });
-    } else if (pendingAction === "check" && actions.canCheck) {
-      setPendingAction(null);
-      setGameState(prev => {
-        const next = applyAction(prev, humanIdx, "check");
-        return updateOdds(next);
-      });
-    } else {
-      // Conditions changed (e.g. someone raised) — discard the pending action
-      setPendingAction(null);
-    }
-  }, [gameState.currentPlayerIndex, gameState.isWaitingForAI]);
-
   // ── Human Action ────────────────────────────────────────────────────────
   const humanAction = useCallback((action: PlayerAction, amount?: number) => {
     const humanIdx = gameState.players.findIndex(p => p.isHuman);
@@ -302,6 +275,27 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
       return updateOdds(next);
     });
   }, [gameState, mode, advisorHint, updateOdds]);
+
+  // ── Auto-execute pending pre-action when human's turn arrives ───────────
+  useEffect(() => {
+    if (!pendingAction) return;
+    const humanIdx = gameState.players.findIndex(p => p.isHuman);
+    if (humanIdx === -1) return;
+    const human = gameState.players[humanIdx];
+    if (!human.isActive || gameState.isWaitingForAI) return;
+
+    const actions = getAvailableActions(gameState, humanIdx);
+    if (pendingAction === "fold" && actions.canFold) {
+      setPendingAction(null);
+      humanAction("fold");
+    } else if (pendingAction === "check" && actions.canCheck) {
+      setPendingAction(null);
+      humanAction("check");
+    } else {
+      // Conditions changed (e.g. someone raised) — discard the pending action
+      setPendingAction(null);
+    }
+  }, [gameState.currentPlayerIndex, gameState.isWaitingForAI, humanAction]);
 
   // ── Start New Hand ───────────────────────────────────────────────────────
   const newHand = useCallback(() => {
