@@ -79,9 +79,9 @@ export function PipWindow({ state, availableActions, onAction, onNewHand, isOpen
     else if (!isOpen && pipWindowRef.current) closePip();
   }, [isOpen]);
 
-  if (!pipRoot) return null;
-
   const [showReview, setShowReview] = useState(false);
+
+  if (!pipRoot) return null;
 
   const human = state.players.find(p => p.isHuman);
   const pot = totalPot(state);
