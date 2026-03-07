@@ -8,35 +8,37 @@ datasource db {
 }
 
 model PlayerStats {
-  id              String   @id @default("singleton")
-  totalHands      Int      @default(0)
-  handsWon        Int      @default(0)
-  handsLost       Int      @default(0)
-  handsFolded     Int      @default(0)
-  totalProfit     Int      @default(0)
-  biggestPot      Int      @default(0)
-  biggestWin      Int      @default(0)
-  vpipHands       Int      @default(0)
-  pfrHands        Int      @default(0)
-  advisorFollowed  Int      @default(0)
-  advisorShown     Int      @default(0)
-  sessionsPlayed   Int      @default(0)
-  correctDecisions Int      @default(0)
-  totalDecisions   Int      @default(0)
-  updatedAt       DateTime @updatedAt
+  id                   String   @id @default("singleton")
+  totalHands           Int      @default(0)
+  handsWon             Int      @default(0)
+  handsLost            Int      @default(0)
+  handsFolded          Int      @default(0)
+  totalProfit          Int      @default(0)
+  biggestPot           Int      @default(0)
+  biggestWin           Int      @default(0)
+  vpipHands            Int      @default(0)
+  pfrHands             Int      @default(0)
+  advisorFollowed      Int      @default(0)
+  advisorShown         Int      @default(0)
+  sessionsPlayed       Int      @default(0)
+  correctDecisions     Int      @default(0)
+  totalDecisions       Int      @default(0)
+  totalPlaytimeSeconds Int      @default(0)
+  updatedAt            DateTime @updatedAt
 }
 
 model Session {
-  id          String    @id @default(cuid())
-  startedAt   DateTime  @default(now())
-  endedAt     DateTime?
-  mode        String
-  handsPlayed Int       @default(0)
-  profit      Int       @default(0)
-  finalStack  Int       @default(10000)
-  startStack  Int       @default(10000)
-  savedState  String?
-  hands       Hand[]
+  id              String    @id @default(cuid())
+  startedAt       DateTime  @default(now())
+  endedAt         DateTime?
+  mode            String
+  handsPlayed     Int       @default(0)
+  profit          Int       @default(0)
+  finalStack      Int       @default(10000)
+  startStack      Int       @default(10000)
+  savedState      String?
+  playtimeSeconds Int       @default(0)
+  hands           Hand[]
 }
 
 model Hand {

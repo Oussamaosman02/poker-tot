@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { action, sessionId, mode, startStack, finalStack, handsPlayed, profit, savedState } = await req.json();
+    const { action, sessionId, mode, startStack, finalStack, handsPlayed, profit, savedState, playtimeSeconds } = await req.json();
 
     if (action === "start") {
       const session = await prisma.session.create({
@@ -59,14 +59,29 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "save" && sessionId) {
+      const prev = await prisma.session.findUnique({
+        where: { id: sessionId },
+        select: { playtimeSeconds: true },
+      });
+      const newPlaytime = typeof playtimeSeconds === "number" ? playtimeSeconds : 0;
+      const addedSeconds = Math.max(0, newPlaytime - (prev?.playtimeSeconds ?? 0));
+
       await prisma.session.update({
         where: { id: sessionId },
         data: {
           savedState: JSON.stringify(savedState),
           finalStack: savedState.players.find((p: { id: string }) => p.id === "human")?.stack ?? finalStack,
           handsPlayed: savedState.handNumber,
+          playtimeSeconds: newPlaytime,
         },
       });
+      if (addedSeconds > 0) {
+        await prisma.playerStats.upsert({
+          where: { id: "singleton" },
+          create: { id: "singleton", totalPlaytimeSeconds: addedSeconds },
+          update: { totalPlaytimeSeconds: { increment: addedSeconds } },
+        });
+      }
       return NextResponse.json({ ok: true });
     }
 

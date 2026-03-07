@@ -20,6 +20,15 @@ interface Stats {
   sessionsPlayed: number;
   correctDecisions: number;
   totalDecisions: number;
+  totalPlaytimeSeconds: number;
+}
+
+function formatPlaytime(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h === 0) return `${m}m`;
+  return `${h}h ${m}m`;
 }
 
 interface Hand {
@@ -157,7 +166,12 @@ export default function StatsPage() {
               <StatCard label="VPIP" value={`${vpip}%`} sub="Voluntarily in pot" color="#c084fc" />
               <StatCard label="PFR" value={`${pfr}%`} sub="Preflop raise %" color="#67e8f9" />
               <StatCard label="Biggest Pot" value={`$${stats.biggestPot.toLocaleString()}`} />
-              <StatCard label="Hands Folded" value={`${stats.handsFolded}`} sub={`${stats.totalHands ? Math.round(stats.handsFolded / stats.totalHands * 100) : 0}% fold rate`} />
+              <StatCard
+                label="Time Played"
+                value={formatPlaytime(stats.totalPlaytimeSeconds ?? 0)}
+                sub={`${stats.sessionsPlayed} session${stats.sessionsPlayed !== 1 ? "s" : ""}`}
+                color="#a78bfa"
+              />
             </div>
 
             {/* Profit chart */}

@@ -83,6 +83,9 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
   const [handSummary, setHandSummary] = useState<HandSummaryData | null>(null);
   const [pendingAction, setPendingAction] = useState<"fold" | "check" | null>(null);
 
+  // Session timer
+  const sessionStartRef = useRef(Date.now());
+
   // Track hand actions for stats
   const currentHandActions = useRef<{ street: string; action: string; amount: number }[]>([]);
   const allHandActionsRef = useRef<HandActionEntry[]>([]);
@@ -468,7 +471,12 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
       fetch("/api/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "save", sessionId, savedState: snapshot }),
+        body: JSON.stringify({
+          action: "save",
+          sessionId,
+          savedState: snapshot,
+          playtimeSeconds: Math.floor((Date.now() - sessionStartRef.current) / 1000),
+        }),
       }).catch(() => {});
     }
   }, [gameState.phase]);
