@@ -23,6 +23,23 @@ export interface HandDecision {
   isCorrect: boolean | null;  // null means no hint was available to compare
 }
 
+export interface HandActionEntry {
+  playerName: string;
+  isHuman: boolean;
+  street: string;
+  action: string;
+  amount: number;
+}
+
+export interface OpponentSummary {
+  name: string;
+  personality: string | null;
+  holeCards: string[];
+  finalStack: number;
+  isFolded: boolean;
+  isWinner: boolean;
+}
+
 export interface HandSummaryData {
   handNumber: number;
   decisions: HandDecision[];
@@ -32,6 +49,8 @@ export interface HandSummaryData {
   feedback: string;
   holeCards: import("@/lib/poker/types").Card[];
   communityCards: import("@/lib/poker/types").Card[];
+  allActions: HandActionEntry[];
+  opponentSummaries: OpponentSummary[];
 }
 
 // ── Internal ──────────────────────────────────────────────────────────────────
@@ -66,6 +85,7 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
 
   // Track hand actions for stats
   const currentHandActions = useRef<{ street: string; action: string; amount: number }[]>([]);
+  const allHandActionsRef = useRef<HandActionEntry[]>([]);
   const handDecisionsRef = useRef<HandDecision[]>([]);
   const humanPreFlopRaised = useRef(false);
   const humanVPIP = useRef(false);
@@ -185,6 +205,7 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
     }
 
     setIsAIThinking(false);
+    allHandActionsRef.current.push({ playerName: player.name, isHuman: false, street: state.phase, action, amount: amount ?? 0 });
     setGameState(prev => {
       const next = applyAction(prev, playerIdx, action, amount);
       return updateOdds(next);
@@ -246,6 +267,7 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
 
     const street = gameState.phase;
     currentHandActions.current.push({ street, action, amount: amount ?? 0 });
+    allHandActionsRef.current.push({ playerName: "You", isHuman: true, street, action, amount: amount ?? 0 });
     humanActionRef.current = action;
 
     // Record per-decision data (uses hint computed at turn start, always)
@@ -300,6 +322,7 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
   // ── Start New Hand ───────────────────────────────────────────────────────
   const newHand = useCallback(() => {
     currentHandActions.current = [];
+    allHandActionsRef.current = [];
     handDecisionsRef.current = [];
     humanPreFlopRaised.current = false;
     humanVPIP.current = false;
@@ -402,6 +425,18 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
       feedback = "Tough hand. The advisor suggested different plays — worth reviewing.";
     }
 
+    const winnerIds = new Set(gameState.winners.map(w => w.playerId));
+    const opponentSummaries: OpponentSummary[] = gameState.players
+      .filter(p => !p.isHuman && !p.isEliminated)
+      .map(p => ({
+        name: p.name,
+        personality: p.personality,
+        holeCards: p.holeCards.map(cardToString),
+        finalStack: p.stack,
+        isFolded: p.isFolded,
+        isWinner: winnerIds.has(p.id),
+      }));
+
     setHandSummary({
       handNumber: gameState.handNumber,
       decisions,
@@ -411,6 +446,8 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
       feedback,
       holeCards: human?.holeCards ?? [],
       communityCards: gameState.communityCards,
+      allActions: [...allHandActionsRef.current],
+      opponentSummaries,
     });
 
     if (sessionId) {

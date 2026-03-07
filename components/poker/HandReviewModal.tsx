@@ -29,7 +29,7 @@ export function HandReviewModal({ summary, onClose }: HandReviewModalProps) {
   const [aiStatus, setAiStatus] = useState<"loading" | "done" | "error">("loading");
   const [aiFeedback, setAiFeedback] = useState("");
 
-  const { handNumber, decisions, result, profitLoss, score, holeCards, communityCards } = summary;
+  const { handNumber, decisions, result, profitLoss, score, holeCards, communityCards, allActions, opponentSummaries } = summary;
 
   const resultColor = result === "won" ? "#86efac" : result === "folded" ? "#9ca3af" : "#fca5a5";
   const plLabel = profitLoss >= 0 ? `+$${profitLoss.toLocaleString()}` : `-$${Math.abs(profitLoss).toLocaleString()}`;
@@ -50,6 +50,8 @@ export function HandReviewModal({ summary, onClose }: HandReviewModalProps) {
             result,
             profitLoss,
             score,
+            allActions,
+            opponentSummaries,
           }),
           signal: AbortSignal.timeout(20000),
         });
