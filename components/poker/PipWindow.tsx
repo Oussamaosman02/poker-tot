@@ -11,11 +11,12 @@ interface PipWindowProps {
   state: GameState;
   availableActions: AvailableActions | null;
   onAction: (action: PlayerAction, amount?: number) => void;
+  onNewHand: () => void;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function PipWindow({ state, availableActions, onAction, isOpen, onClose }: PipWindowProps) {
+export function PipWindow({ state, availableActions, onAction, onNewHand, isOpen, onClose }: PipWindowProps) {
   const pipWindowRef = useRef<Window | null>(null);
   const [pipRoot, setPipRoot] = useState<HTMLElement | null>(null);
 
@@ -80,6 +81,7 @@ export function PipWindow({ state, availableActions, onAction, isOpen, onClose }
   const human = state.players.find(p => p.isHuman);
   const pot = totalPot(state);
   const isHumanTurn = human?.isActive && availableActions;
+  const showOdds = state.mode !== "normal";
 
   return createPortal(
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#050A14", color: "white", fontFamily: "system-ui, sans-serif" }}>
@@ -106,7 +108,7 @@ export function PipWindow({ state, availableActions, onAction, isOpen, onClose }
               <PlayingCard faceDown size="md" />
             </>
           )}
-          {human?.winProbability != null && human.winProbability > 0 && (
+          {showOdds && human?.winProbability != null && human.winProbability > 0 && (
             <div style={{ marginLeft: 8, fontSize: 24, fontWeight: 900, color: human.winProbability > 50 ? "#86efac" : human.winProbability > 30 ? "#fcd34d" : "#fca5a5" }}>
               {human.winProbability}%
             </div>
@@ -127,21 +129,51 @@ export function PipWindow({ state, availableActions, onAction, isOpen, onClose }
         </div>
       </div>
 
-      {/* Pot + players status */}
-      <div style={{ padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      {/* Pot */}
+      <div style={{ padding: "8px 14px 4px", display: "flex", gap: 16, alignItems: "center" }}>
         <div>
-          <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700 }}>POT</div>
-          <div style={{ fontSize: 18, fontWeight: 900, color: "#fbbf24", fontVariantNumeric: "tabular-nums" }}>${pot.toLocaleString()}</div>
+          <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 2 }}>POT</div>
+          <div style={{ fontSize: 18, fontWeight: 900, color: "#fbbf24" }}>${pot.toLocaleString()}</div>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-end" }}>
-          {state.players.filter(p => !p.isEliminated && !p.isHuman).map(p => (
-            <div key={p.id} style={{ fontSize: 10, color: p.isFolded ? "#4b5563" : "#d1d5db", display: "flex", gap: 6 }}>
-              <span>{p.name}</span>
-              <span style={{ color: "#fbbf24", fontWeight: 700 }}>${p.stack.toLocaleString()}</span>
-              {p.lastAction && <span style={{ color: "#9ca3af" }}>{p.lastAction.toUpperCase()}</span>}
+        <div style={{ fontSize: 10, color: "#6b7280" }}>
+          {state.phase !== "idle" && `Hand #${state.handNumber}`}
+        </div>
+      </div>
+
+      {/* Players status */}
+      <div style={{ padding: "4px 14px 8px", display: "flex", flexDirection: "column", gap: 3, flex: 1, overflowY: "auto" }}>
+        {state.players.filter(p => !p.isEliminated && !p.isHuman).map(p => {
+          const isActive = p.isActive;
+          const actionLabel = p.lastAction
+            ? p.lastAction.toUpperCase() + ((p.lastAction === "raise" || p.lastAction === "call" || p.lastAction === "all-in") && p.lastActionAmount > 0 ? ` $${p.lastActionAmount.toLocaleString()}` : "")
+            : null;
+          const actionColor = p.lastAction === "fold" ? "#ef4444" : p.lastAction === "raise" || p.lastAction === "all-in" ? "#fbbf24" : p.lastAction === "call" ? "#60a5fa" : "#34d399";
+          return (
+            <div key={p.id} style={{
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              padding: "4px 8px", borderRadius: 6,
+              background: isActive ? "rgba(234,179,8,0.1)" : "rgba(255,255,255,0.03)",
+              border: isActive ? "1px solid rgba(234,179,8,0.3)" : "1px solid transparent",
+              opacity: p.isFolded ? 0.4 : 1,
+            }}>
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                {isActive && <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#fbbf24" }} />}
+                <span style={{ fontSize: 11, fontWeight: 700, color: p.isFolded ? "#6b7280" : "#e5e7eb" }}>{p.name}</span>
+                {p.isFolded && <span style={{ fontSize: 9, color: "#6b7280" }}>FOLD</span>}
+                {p.isAllIn && <span style={{ fontSize: 9, color: "#ef4444", fontWeight: 900 }}>ALL IN</span>}
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {actionLabel && !p.isFolded && (
+                  <span style={{ fontSize: 9, fontWeight: 900, color: actionColor }}>{actionLabel}</span>
+                )}
+                {p.streetBet > 0 && !p.isFolded && (
+                  <span style={{ fontSize: 9, color: "#9ca3af" }}>bet ${p.streetBet.toLocaleString()}</span>
+                )}
+                <span style={{ fontSize: 10, color: "#fbbf24", fontWeight: 700 }}>${p.stack.toLocaleString()}</span>
+              </div>
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
       {/* Action bar */}
@@ -154,9 +186,30 @@ export function PipWindow({ state, availableActions, onAction, isOpen, onClose }
             bigBlind={state.bigBlind}
             isCompact
           />
+        ) : state.phase === "idle" || state.phase === "showdown" ? (
+          <div style={{ textAlign: "center", padding: "6px 14px" }}>
+            <button
+              onClick={onNewHand}
+              style={{
+                width: "100%",
+                padding: "10px",
+                borderRadius: 10,
+                fontWeight: 900,
+                fontSize: 11,
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                background: "linear-gradient(135deg, #78350f, #c9a84c)",
+                color: "#000",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              {state.phase === "idle" ? "Start Game" : "Deal Next Hand"}
+            </button>
+          </div>
         ) : (
           <div style={{ textAlign: "center", fontSize: 11, color: "#6b7280", padding: "8px 0" }}>
-            {state.isWaitingForAI ? "AI is thinking..." : state.phase === "showdown" ? "Hand complete" : "Waiting..."}
+            {state.isWaitingForAI ? "AI is thinking..." : "Waiting..."}
           </div>
         )}
       </div>

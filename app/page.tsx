@@ -128,11 +128,11 @@ export default function Home() {
         </h2>
         <div className="flex gap-3 justify-center flex-wrap">
           {[
-            { name: "Viktor", style: "TAG", model: "LLaMA 3.1", color: "from-red-900" },
-            { name: "Maria", style: "LAG", model: "Mistral 7B", color: "from-orange-900" },
-            { name: "Chen", style: "Nit", model: "Gemma 2", color: "from-cyan-900" },
-            { name: "Sofia", style: "Fish", model: "Qwen3", color: "from-pink-900" },
-            { name: "James", style: "Maniac", model: "Phi-3", color: "from-yellow-900" },
+            { name: "Viktor", style: "TAG", model: "Gemini / GPT / Grok", color: "from-red-900" },
+            { name: "Maria", style: "LAG", model: "Gemini / DeepSeek / Kimi", color: "from-orange-900" },
+            { name: "Chen", style: "Nit", model: "GPT-4.1 / Grok / MiniMax", color: "from-cyan-900" },
+            { name: "Sofia", style: "Fish", model: "Gemini / GPT / DeepSeek", color: "from-pink-900" },
+            { name: "James", style: "Maniac", model: "Kimi / Grok / MiniMax", color: "from-yellow-900" },
           ].map(ai => (
             <div
               key={ai.name}

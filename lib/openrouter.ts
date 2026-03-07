@@ -9,12 +9,17 @@ export const openrouter = createOpenAI({
   },
 });
 
-export const FREE_MODELS = [
-  "meta-llama/llama-3.1-8b-instruct:free",
-  "mistralai/mistral-7b-instruct:free",
-  "google/gemma-2-9b-it:free",
-  "qwen/qwen3-8b:free",
-  "microsoft/phi-3-mini-128k-instruct:free",
+export const AI_MODELS_POOL = [
+  "google/gemini-2.5-flash",
+  "google/gemini-2.5-pro",
+  "google/gemini-2.0-flash-001",
+  "google/gemini-3-flash-preview",
+  "openai/gpt-4o-mini",
+  "openai/gpt-4.1-mini",
+  "x-ai/grok-3-mini",
+  "deepseek/deepseek-v3.2",
+  "minimax/minimax-m2.5",
+  "moonshotai/kimi-k2.5",
 ];
 
 export const PERSONALITY_PROMPTS: Record<string, string> = {

@@ -3,15 +3,16 @@
 import { GameState, Player, Card, GamePhase, PlayerAction, GameMode, AIPersonality, PERSONALITIES, AvailableActions } from "./types";
 import { createDeck, shuffleDeck } from "./deck";
 import { evaluateBestHand } from "./hand-evaluator";
+import { AI_MODELS_POOL } from "@/lib/openrouter";
 
-// ─── AI Models assigned per personality ────────────────────────────────────
-export const AI_MODELS: Record<AIPersonality, string> = {
-  TAG:    "meta-llama/llama-3.1-8b-instruct:free",
-  LAG:    "mistralai/mistral-7b-instruct:free",
-  nit:    "google/gemma-2-9b-it:free",
-  fish:   "qwen/qwen3-8b:free",
-  maniac: "microsoft/phi-3-mini-128k-instruct:free",
-};
+// ─── Randomly assign models from pool, one per personality slot ─────────────
+function assignModels(): Record<AIPersonality, string> {
+  const shuffled = [...AI_MODELS_POOL].sort(() => Math.random() - 0.5);
+  const personalities: AIPersonality[] = ["TAG", "LAG", "nit", "fish", "maniac"];
+  return Object.fromEntries(personalities.map((p, i) => [p, shuffled[i % shuffled.length]])) as Record<AIPersonality, string>;
+}
+
+export const AI_MODELS = assignModels();
 
 const AI_NAMES = ["Viktor", "Maria", "Chen", "Sofia", "James"];
 const AI_AVATARS = ["V", "M", "C", "S", "J"];

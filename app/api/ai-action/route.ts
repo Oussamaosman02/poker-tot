@@ -10,6 +10,7 @@ const ActionSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const body = await req.json().catch(() => ({}));
   try {
     const {
       model,
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
       maxRaise,
       availableActions,
       opponents,
-    } = await req.json();
+    } = body;
 
     const personalityPrompt = PERSONALITY_PROMPTS[personality] ?? PERSONALITY_PROMPTS.TAG;
 
@@ -67,13 +68,12 @@ Make your decision.`;
     return NextResponse.json(object);
   } catch (err) {
     console.error("AI action error:", err);
-    // Fallback to simple rule-based decision
-    const { availableActions, callAmount, stack } = await req.json().catch(() => ({
-      availableActions: ["fold"],
-      callAmount: 0,
-      stack: 0,
-    }));
-    const fallback = availableActions?.includes("check") ? "check" : "fold";
+    const { availableActions, callAmount } = body;
+    const fallback = availableActions?.includes("check")
+      ? "check"
+      : availableActions?.includes("call") && callAmount <= 200
+      ? "call"
+      : "fold";
     return NextResponse.json({ action: fallback });
   }
 }

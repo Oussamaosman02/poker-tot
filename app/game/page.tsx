@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { GameMode } from "@/lib/poker/types";
 import { usePokerGame } from "@/hooks/use-poker-game";
@@ -10,6 +10,7 @@ function GameInner() {
   const searchParams = useSearchParams();
   const mode = (searchParams.get("mode") ?? "normal") as GameMode;
   const sessionId = searchParams.get("session");
+  const [enableAdvisor, setEnableAdvisor] = useState(false);
 
   const {
     gameState,
@@ -20,7 +21,7 @@ function GameInner() {
     humanAction,
     newHand,
     totalPot: pot,
-  } = usePokerGame(mode, sessionId);
+  } = usePokerGame(mode, sessionId, enableAdvisor);
 
   return (
     <PokerTable
@@ -31,6 +32,8 @@ function GameInner() {
       isAIThinking={isAIThinking}
       advisorHint={advisorHint}
       trainingFeedback={trainingFeedback}
+      enableAdvisor={enableAdvisor}
+      onToggleAdvisor={() => setEnableAdvisor(v => !v)}
     />
   );
 }

@@ -29,7 +29,7 @@ interface HandRecord {
   pfr: boolean;
 }
 
-export function usePokerGame(mode: GameMode, sessionId: string | null) {
+export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdvisor = false) {
   const [gameState, setGameState] = useState<GameState>(() => createInitialState(mode));
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [advisorHint, setAdvisorHint] = useState<string | null>(null);
@@ -128,7 +128,7 @@ export function usePokerGame(mode: GameMode, sessionId: string | null) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: player.aiModel ?? "meta-llama/llama-3.1-8b-instruct:free",
+          model: player.aiModel ?? "google/gemini-2.5-flash",
           personality: player.personality ?? "TAG",
           playerName: player.name,
           holeCards: player.holeCards.map(cardToString).join(" "),
@@ -171,12 +171,12 @@ export function usePokerGame(mode: GameMode, sessionId: string | null) {
   // ── Compute advisor hint when human turn ────────────────────────────────
   useEffect(() => {
     const humanIdx = gameState.players.findIndex(p => p.isHuman);
-    if (humanIdx !== -1 && gameState.players[humanIdx].isActive && (mode === "advisor" || mode === "training")) {
+    if (humanIdx !== -1 && gameState.players[humanIdx].isActive && (mode === "advisor" || mode === "training" || enableAdvisor)) {
       computeAdvisorHint(gameState);
     } else {
       setAdvisorHint(null);
     }
-  }, [gameState.currentPlayerIndex, gameState.phase, mode]);
+  }, [gameState.currentPlayerIndex, gameState.phase, mode, enableAdvisor]);
 
   // ── Human Action ────────────────────────────────────────────────────────
   const humanAction = useCallback((action: PlayerAction, amount?: number) => {
@@ -198,7 +198,7 @@ export function usePokerGame(mode: GameMode, sessionId: string | null) {
     humanActionRef.current = action;
 
     // Training mode feedback
-    if (mode === "training" && advisorHint) {
+    if ((mode === "training" || enableAdvisor) && advisorHint) {
       const advisorSuggested = advisorHint.toLowerCase().includes(action) ? action : null;
       const followed = advisorSuggested === action;
       if (!followed) {

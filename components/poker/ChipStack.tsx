@@ -43,9 +43,9 @@ interface ChipStackProps {
 }
 
 const SIZE = {
-  sm: { w: 20, h: 5, gap: -3 },
-  md: { w: 26, h: 6, gap: -4 },
-  lg: { w: 32, h: 7, gap: -5 },
+  sm: { d: 16, gap: 5 },
+  md: { d: 20, gap: 6 },
+  lg: { d: 26, gap: 8 },
 };
 
 export function ChipStack({ amount, size = "sm", animated, className, label = false }: ChipStackProps) {
@@ -53,30 +53,32 @@ export function ChipStack({ amount, size = "sm", animated, className, label = fa
 
   const s = SIZE[size];
   const tiers = buildStack(amount);
-  // Flatten into individual chip entries (max ~12 total visible)
+  // Flatten into individual chip entries (max ~10 total visible)
   const allChips: ReturnType<typeof getChipColor>[] = [];
   for (const tier of tiers) {
     for (let i = 0; i < tier.count; i++) allChips.push(tier.color);
-    if (allChips.length >= 12) break;
+    if (allChips.length >= 10) break;
   }
 
   return (
     <div className={cn("flex flex-col items-center gap-0", animated && "animate-chip-pop", className)}>
-      {/* Stack (bottom to top) */}
+      {/* Stack: circles from bottom to top, each slightly offset upward */}
       <div
-        className="relative flex flex-col-reverse"
-        style={{ width: s.w, height: allChips.length * (s.h + s.gap) + s.h }}
+        className="relative"
+        style={{ width: s.d, height: s.d + (allChips.length - 1) * s.gap }}
       >
         {allChips.map((chip, i) => (
           <div
             key={i}
-            className="absolute left-0 right-0 rounded-full"
+            className="absolute left-0"
             style={{
-              height: s.h,
-              bottom: i * (s.h + s.gap),
-              background: `radial-gradient(ellipse at 40% 30%, ${chip.bg}dd, ${chip.bg})`,
-              border: `1px solid ${chip.border}`,
-              boxShadow: `0 2px 4px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15)`,
+              width: s.d,
+              height: s.d,
+              borderRadius: "50%",
+              bottom: i * s.gap,
+              background: `radial-gradient(circle at 38% 35%, ${chip.bg}ff, ${chip.bg}cc)`,
+              border: `2px solid ${chip.border}`,
+              boxShadow: `0 2px 6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.25)`,
             }}
           />
         ))}

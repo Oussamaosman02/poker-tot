@@ -34,6 +34,8 @@ interface PokerTableProps {
   isAIThinking: boolean;
   advisorHint?: string | null;
   trainingFeedback?: string | null;
+  enableAdvisor?: boolean;
+  onToggleAdvisor?: () => void;
 }
 
 export function PokerTable({
@@ -44,13 +46,19 @@ export function PokerTable({
   isAIThinking,
   advisorHint,
   trainingFeedback,
+  enableAdvisor,
+  onToggleAdvisor,
 }: PokerTableProps) {
   const [pipOpen, setPipOpen] = useState(false);
+  const [revealCards, setRevealCards] = useState(false);
   const pipSupported = typeof window !== "undefined" && "documentPictureInPicture" in window;
 
   const pot = totalPot(state);
-  const showCards = state.mode === "vision";
   const isNormalMode = state.mode === "normal";
+  const human = state.players.find(p => p.isHuman);
+  const humanFolded = !!(human?.isFolded && !human?.isEliminated);
+  const showCards = state.mode === "vision" || revealCards;
+  const showOdds = !isNormalMode || revealCards;
 
   const winners = state.winners.map(w => w.playerId);
 
@@ -124,35 +132,12 @@ export function PokerTable({
                 isAIThinking={isAIThinking}
                 showCards={showCards}
                 isWinner={winners.includes(player.id)}
-                showOdds={!isNormalMode}
+                showOdds={showOdds}
               />
             </div>
           ))}
         </div>
 
-        {/* Showdown overlay */}
-        {state.phase === "showdown" && state.winners.length > 0 && (
-          <div className="absolute inset-x-0 top-1/2 transform -translate-y-1/2 flex flex-col items-center gap-2 z-10 pointer-events-none">
-            <div
-              className="px-6 py-3 rounded-2xl text-center"
-              style={{
-                background: "rgba(0,0,0,0.85)",
-                border: "1px solid rgba(201,168,76,0.5)",
-                backdropFilter: "blur(8px)",
-              }}
-            >
-              {state.winners.map(w => {
-                const player = state.players.find(p => p.id === w.playerId);
-                return (
-                  <div key={w.playerId} className="text-center">
-                    <div className="text-yellow-400 font-black text-lg">{player?.name ?? w.playerId} wins!</div>
-                    <div className="text-yellow-300 font-bold text-sm">${w.amount.toLocaleString()} — {w.handDesc}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Action bar / New hand button */}
@@ -167,7 +152,26 @@ export function PokerTable({
         }}
       >
         {state.phase === "showdown" ? (
-          <div className="flex justify-center px-4">
+          <div className="flex flex-col items-center gap-2 px-4">
+            {state.winners.length > 0 && (
+              <div
+                className="px-6 py-2 rounded-xl text-center"
+                style={{
+                  background: "rgba(0,0,0,0.6)",
+                  border: "1px solid rgba(201,168,76,0.4)",
+                }}
+              >
+                {state.winners.map(w => {
+                  const player = state.players.find(p => p.id === w.playerId);
+                  return (
+                    <div key={w.playerId} className="text-center">
+                      <div className="text-yellow-400 font-black text-base">{player?.name ?? w.playerId} wins!</div>
+                      <div className="text-yellow-300 font-bold text-xs">${w.amount.toLocaleString()} — {w.handDesc}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             <button
               onClick={onNewHand}
               className="px-8 py-3 rounded-xl font-black uppercase tracking-widest text-sm transition-all active:scale-95 hover:brightness-110"
@@ -195,16 +199,33 @@ export function PokerTable({
             </button>
           </div>
         ) : availableActions ? (
-          <ActionBar
-            actions={availableActions}
-            onAction={onAction}
-            advisorHint={advisorHint}
-            trainingFeedback={trainingFeedback}
-            pot={pot}
-            bigBlind={state.bigBlind}
-          />
+          <div className="flex flex-col gap-1">
+            {isNormalMode && (
+              <div className="flex justify-end px-4">
+                <button
+                  onClick={onToggleAdvisor}
+                  className="px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all"
+                  style={{
+                    background: enableAdvisor ? "rgba(59,130,246,0.25)" : "rgba(255,255,255,0.05)",
+                    border: enableAdvisor ? "1px solid rgba(59,130,246,0.5)" : "1px solid rgba(255,255,255,0.1)",
+                    color: enableAdvisor ? "#93c5fd" : "#6b7280",
+                  }}
+                >
+                  {enableAdvisor ? "💡 Advisor on" : "💡 Advisor"}
+                </button>
+              </div>
+            )}
+            <ActionBar
+              actions={availableActions}
+              onAction={onAction}
+              advisorHint={advisorHint}
+              trainingFeedback={trainingFeedback}
+              pot={pot}
+              bigBlind={state.bigBlind}
+            />
+          </div>
         ) : (
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center gap-2">
             <div className="text-gray-600 text-xs font-medium tracking-wider uppercase">
               {isAIThinking ? (
                 <span className="text-yellow-700 animate-pulse">AI is thinking...</span>
@@ -212,6 +233,35 @@ export function PokerTable({
                 "Waiting for players..."
               )}
             </div>
+            {/* Normal-mode overlays: shown while a hand is in progress */}
+            {isNormalMode && state.phase !== "idle" && state.phase !== "showdown" && (
+              <div className="flex gap-2">
+                {humanFolded && (
+                  <button
+                    onClick={() => setRevealCards(v => !v)}
+                    className="px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all"
+                    style={{
+                      background: revealCards ? "rgba(139,92,246,0.25)" : "rgba(255,255,255,0.05)",
+                      border: revealCards ? "1px solid rgba(139,92,246,0.5)" : "1px solid rgba(255,255,255,0.1)",
+                      color: revealCards ? "#c4b5fd" : "#6b7280",
+                    }}
+                  >
+                    {revealCards ? "👁 Cards visible" : "👁 Reveal cards"}
+                  </button>
+                )}
+                <button
+                  onClick={onToggleAdvisor}
+                  className="px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all"
+                  style={{
+                    background: enableAdvisor ? "rgba(59,130,246,0.25)" : "rgba(255,255,255,0.05)",
+                    border: enableAdvisor ? "1px solid rgba(59,130,246,0.5)" : "1px solid rgba(255,255,255,0.1)",
+                    color: enableAdvisor ? "#93c5fd" : "#6b7280",
+                  }}
+                >
+                  {enableAdvisor ? "💡 Advisor on" : "💡 Advisor"}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -224,6 +274,7 @@ export function PokerTable({
         state={state}
         availableActions={availableActions}
         onAction={onAction}
+        onNewHand={onNewHand}
         isOpen={pipOpen}
         onClose={() => setPipOpen(false)}
       />
