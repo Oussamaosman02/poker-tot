@@ -11,6 +11,7 @@ import {
 import { calculateOdds, preflopHandStrength } from "@/lib/poker/odds-calculator";
 import { evaluateBestHand } from "@/lib/poker/hand-evaluator";
 import { cardToString } from "@/lib/poker/deck";
+import { playYourTurnSound, playHandEndSound } from "@/lib/audio";
 
 interface HandRecord {
   handNumber: number;
@@ -177,6 +178,20 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
       setAdvisorHint(null);
     }
   }, [gameState.currentPlayerIndex, gameState.phase, mode, enableAdvisor]);
+
+  // ── Play sounds ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    const humanIdx = gameState.players.findIndex(p => p.isHuman);
+    if (humanIdx !== -1 && gameState.players[humanIdx].isActive && !gameState.isWaitingForAI) {
+      playYourTurnSound();
+    }
+  }, [gameState.currentPlayerIndex, gameState.phase]);
+
+  useEffect(() => {
+    if (gameState.phase === "showdown") {
+      playHandEndSound();
+    }
+  }, [gameState.phase]);
 
   // ── Human Action ────────────────────────────────────────────────────────
   const humanAction = useCallback((action: PlayerAction, amount?: number) => {

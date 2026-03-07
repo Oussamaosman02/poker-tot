@@ -129,13 +129,19 @@ export function PipWindow({ state, availableActions, onAction, onNewHand, isOpen
         </div>
       </div>
 
-      {/* Pot */}
+      {/* Pot + Stack */}
       <div style={{ padding: "8px 14px 4px", display: "flex", gap: 16, alignItems: "center" }}>
         <div>
           <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 2 }}>POT</div>
           <div style={{ fontSize: 18, fontWeight: 900, color: "#fbbf24" }}>${pot.toLocaleString()}</div>
         </div>
-        <div style={{ fontSize: 10, color: "#6b7280" }}>
+        <div>
+          <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 2 }}>YOUR STACK</div>
+          <div style={{ fontSize: 18, fontWeight: 900, color: human && human.stack > 0 ? "#86efac" : "#fca5a5" }}>
+            ${human?.stack.toLocaleString() ?? "0"}
+          </div>
+        </div>
+        <div style={{ fontSize: 10, color: "#6b7280", marginLeft: "auto" }}>
           {state.phase !== "idle" && `Hand #${state.handNumber}`}
         </div>
       </div>
