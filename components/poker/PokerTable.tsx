@@ -373,6 +373,8 @@ export function PokerTable({
         isOpen={pipOpen}
         onClose={() => setPipOpen(false)}
         handSummary={handSummary}
+        pendingAction={pendingAction}
+        onSetPendingAction={onSetPendingAction}
       />
 
       {/* Hand review modal */}
