@@ -68,6 +68,17 @@ export function PokerTable({
     if (state.phase === "preflop") setRevealCards(false);
   }, [state.phase]);
 
+  useEffect(() => {
+    if (!pipSupported) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "p" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        setPipOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [pipSupported]);
+
   const pot = totalPot(state);
   const isNormalMode = state.mode === "normal";
   const human = state.players.find(p => p.isHuman);
