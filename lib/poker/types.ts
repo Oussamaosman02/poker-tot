@@ -67,6 +67,8 @@ export interface GameState {
   dealerIndex: number;
   smallBlind: number;
   bigBlind: number;
+  ante: number;            // current ante amount (0 = no ante)
+  tournamentLevel: number; // current blind level (1-based)
   deck: Card[];
   handNumber: number;
   mode: GameMode;

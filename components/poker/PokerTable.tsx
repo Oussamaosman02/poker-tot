@@ -12,6 +12,7 @@ import { totalPot } from "@/lib/poker/game-engine";
 import { useState, useCallback, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { HandSummaryData } from "@/hooks/use-poker-game";
+import Link from "next/link";
 
 // Player seat positions around the oval — index = player seatIndex
 const SEAT_POSITIONS = [
@@ -71,6 +72,7 @@ export function PokerTable({
   const isNormalMode = state.mode === "normal";
   const human = state.players.find(p => p.isHuman);
   const humanFolded = !!(human?.isFolded && !human?.isEliminated);
+  const aliveCount = state.players.filter(p => !p.isEliminated).length;
   const showCards = state.mode === "vision" || revealCards;
   const showOdds = !isNormalMode || revealCards;
 
@@ -187,51 +189,58 @@ export function PokerTable({
       >
         {state.phase === "showdown" ? (
           <div className="flex flex-col items-center gap-2 px-4">
-            {state.winners.length > 0 && (
-              <div
-                className="px-6 py-2 rounded-xl text-center"
-                style={{
-                  background: "rgba(0,0,0,0.6)",
-                  border: "1px solid rgba(201,168,76,0.4)",
-                }}
-              >
-                {state.winners.map(w => {
-                  const player = state.players.find(p => p.id === w.playerId);
-                  return (
-                    <div key={w.playerId} className="text-center">
-                      <div className="text-yellow-400 font-black text-base">{player?.name ?? w.playerId} wins!</div>
-                      <div className="text-yellow-300 font-bold text-xs">${w.amount.toLocaleString()} — {w.handDesc}</div>
-                    </div>
-                  );
-                })}
-              </div>
+            {/* Tournament over — only 1 player left */}
+            {aliveCount <= 1 ? (
+              <TournamentWinner state={state} />
+            ) : (
+              <>
+                {state.winners.length > 0 && (
+                  <div
+                    className="px-6 py-2 rounded-xl text-center"
+                    style={{
+                      background: "rgba(0,0,0,0.6)",
+                      border: "1px solid rgba(201,168,76,0.4)",
+                    }}
+                  >
+                    {state.winners.map(w => {
+                      const player = state.players.find(p => p.id === w.playerId);
+                      return (
+                        <div key={w.playerId} className="text-center">
+                          <div className="text-yellow-400 font-black text-base">{player?.name ?? w.playerId} wins!</div>
+                          <div className="text-yellow-300 font-bold text-xs">${w.amount.toLocaleString()} — {w.handDesc}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="flex gap-3">
+                  {handSummary && (
+                    <button
+                      onClick={() => setShowReview(true)}
+                      className="px-5 py-3 rounded-xl font-black uppercase tracking-widest text-sm transition-all active:scale-95 hover:brightness-110"
+                      style={{
+                        background: "rgba(255,255,255,0.07)",
+                        border: "1px solid rgba(255,255,255,0.15)",
+                        color: "#e5e7eb",
+                      }}
+                    >
+                      📊 Review Hand
+                    </button>
+                  )}
+                  <button
+                    onClick={onNewHand}
+                    className="px-8 py-3 rounded-xl font-black uppercase tracking-widest text-sm transition-all active:scale-95 hover:brightness-110"
+                    style={{
+                      background: "linear-gradient(135deg, #78350f, #c9a84c)",
+                      color: "black",
+                      boxShadow: "0 4px 20px rgba(201,168,76,0.3)",
+                    }}
+                  >
+                    Deal Next Hand
+                  </button>
+                </div>
+              </>
             )}
-            <div className="flex gap-3">
-              {handSummary && (
-                <button
-                  onClick={() => setShowReview(true)}
-                  className="px-5 py-3 rounded-xl font-black uppercase tracking-widest text-sm transition-all active:scale-95 hover:brightness-110"
-                  style={{
-                    background: "rgba(255,255,255,0.07)",
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    color: "#e5e7eb",
-                  }}
-                >
-                  📊 Review Hand
-                </button>
-              )}
-              <button
-                onClick={onNewHand}
-                className="px-8 py-3 rounded-xl font-black uppercase tracking-widest text-sm transition-all active:scale-95 hover:brightness-110"
-                style={{
-                  background: "linear-gradient(135deg, #78350f, #c9a84c)",
-                  color: "black",
-                  boxShadow: "0 4px 20px rgba(201,168,76,0.3)",
-                }}
-              >
-                Deal Next Hand
-              </button>
-            </div>
           </div>
         ) : state.phase === "idle" ? (
           <div className="flex justify-center px-4">
@@ -361,5 +370,67 @@ export function PokerTable({
       )}
       </div>
     </>
+  );
+}
+
+// ── Tournament winner overlay ─────────────────────────────────────────────────
+function TournamentWinner({ state }: { state: GameState }) {
+  const winner = state.players.find(p => !p.isEliminated);
+  const isHumanWinner = winner?.isHuman;
+
+  // Build final rankings: eliminated players sorted by when they were eliminated
+  // (we don't track elimination order, so show them all as "eliminated")
+  const eliminated = state.players.filter(p => p.isEliminated);
+
+  return (
+    <div
+      className="flex flex-col items-center gap-4 px-6 py-4 rounded-2xl text-center"
+      style={{
+        background: "linear-gradient(135deg, rgba(0,0,0,0.9) 0%, rgba(10,16,32,0.95) 100%)",
+        border: "2px solid rgba(201,168,76,0.6)",
+        boxShadow: "0 0 60px rgba(201,168,76,0.2)",
+        minWidth: 320,
+      }}
+    >
+      <div className="text-4xl">{isHumanWinner ? "🏆" : "🎴"}</div>
+      <div>
+        <div
+          className="font-black text-2xl tracking-widest uppercase"
+          style={{ color: isHumanWinner ? "#fbbf24" : "#c9a84c" }}
+        >
+          {isHumanWinner ? "You win the tournament!" : `${winner?.name ?? "?"} wins!`}
+        </div>
+        {winner && (
+          <div className="text-gray-400 text-sm mt-1">
+            Final stack: ${winner.stack.toLocaleString()}
+          </div>
+        )}
+      </div>
+
+      <div className="text-xs text-gray-500 uppercase tracking-widest">
+        Tournament ended at hand #{state.handNumber} · Level {state.tournamentLevel}
+      </div>
+
+      {eliminated.length > 0 && (
+        <div className="text-xs text-gray-600 text-left">
+          <div className="font-bold text-gray-500 uppercase tracking-wider mb-1">Eliminated</div>
+          {eliminated.map(p => (
+            <div key={p.id}>{p.name}</div>
+          ))}
+        </div>
+      )}
+
+      <Link
+        href="/"
+        className="px-8 py-3 rounded-xl font-black uppercase tracking-widest text-sm transition-all hover:brightness-110"
+        style={{
+          background: "linear-gradient(135deg, #14532d, #c9a84c)",
+          color: "black",
+          boxShadow: "0 4px 20px rgba(201,168,76,0.3)",
+        }}
+      >
+        New Tournament
+      </Link>
+    </div>
   );
 }

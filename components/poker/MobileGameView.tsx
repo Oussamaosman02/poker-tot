@@ -7,6 +7,7 @@ import { ActionBar } from "./ActionBar";
 import { HandReviewModal } from "./HandReviewModal";
 import { totalPot } from "@/lib/poker/game-engine";
 import { HandSummaryData } from "@/hooks/use-poker-game";
+import { handsRemainingInLevel, TOURNAMENT_LEVELS } from "@/lib/poker/tournament";
 import Link from "next/link";
 
 const PHASE_LABEL: Record<string, string> = {
@@ -65,6 +66,13 @@ export function MobileGameView({
   const isIdle = state.phase === "idle";
   const humanInHand = !!(human && !human.isFolded && !human.isEliminated);
   const showPreAction = !isHumanTurn && !isIdle && !isAtShowdown && humanInHand && !!onSetPendingAction;
+  const aliveCount = state.players.filter(p => !p.isEliminated).length;
+  const tournamentOver = isAtShowdown && aliveCount <= 1;
+  const tournamentWinner = state.players.find(p => !p.isEliminated);
+  const handsLeft = state.handNumber > 0
+    ? handsRemainingInLevel(state.handNumber) - 1
+    : handsRemainingInLevel(1) - 1;
+  const isLastLevel = state.tournamentLevel >= TOURNAMENT_LEVELS.length;
 
   return (
     <div style={{
@@ -87,12 +95,27 @@ export function MobileGameView({
         alignItems: "center",
         flexShrink: 0,
       }}>
-        <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: 3, color: "#c9a84c" }}>
-          {PHASE_LABEL[state.phase] ?? state.phase.toUpperCase()}
-        </span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: 3, color: "#c9a84c" }}>
+            {PHASE_LABEL[state.phase] ?? state.phase.toUpperCase()}
+          </span>
+          {/* Level + blinds row */}
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span style={{ fontSize: 10, fontWeight: 900, color: "#fbbf24" }}>LVL {state.tournamentLevel}</span>
+            <span style={{ fontSize: 10, color: "#6b7280" }}>
+              {state.smallBlind}/{state.bigBlind}
+              {state.ante > 0 && <span style={{ color: "#fb923c" }}> ante {state.ante}</span>}
+            </span>
+            {!isLastLevel && state.handNumber > 0 && handsLeft >= 0 && (
+              <span style={{ fontSize: 9, color: handsLeft <= 1 ? "#f87171" : "#4b5563" }}>
+                {handsLeft <= 0 ? "▲ next hand" : `▲${handsLeft}h`}
+              </span>
+            )}
+          </div>
+        </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           {state.phase !== "idle" && (
-            <span style={{ fontSize: 10, color: "#6b7280" }}>Hand #{state.handNumber}</span>
+            <span style={{ fontSize: 10, color: "#6b7280" }}>#{state.handNumber}</span>
           )}
           <span style={{
             fontSize: 9, fontWeight: 700, letterSpacing: 1,
@@ -311,35 +334,66 @@ export function MobileGameView({
           </div>
         ) : isIdle || isAtShowdown ? (
           <div style={{ padding: "10px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
-            {isAtShowdown && handSummary && (
-              <button
-                onClick={() => setShowReview(true)}
-                style={{
-                  width: "100%", padding: "12px", borderRadius: 12,
-                  fontWeight: 900, fontSize: 11, letterSpacing: 2,
-                  textTransform: "uppercase",
-                  background: "rgba(99,102,241,0.12)",
-                  color: "#a5b4fc",
-                  border: "1px solid rgba(99,102,241,0.3)",
-                  cursor: "pointer",
-                }}
-              >
-                📊 Review Hand
-              </button>
+            {tournamentOver ? (
+              /* Tournament winner screen */
+              <div style={{
+                padding: "16px", borderRadius: 16, textAlign: "center",
+                background: "rgba(0,0,0,0.8)",
+                border: "2px solid rgba(201,168,76,0.5)",
+              }}>
+                <div style={{ fontSize: 32, marginBottom: 6 }}>{tournamentWinner?.isHuman ? "🏆" : "🎴"}</div>
+                <div style={{ fontSize: 16, fontWeight: 900, color: tournamentWinner?.isHuman ? "#fbbf24" : "#c9a84c", letterSpacing: 1 }}>
+                  {tournamentWinner?.isHuman ? "You win!" : `${tournamentWinner?.name} wins!`}
+                </div>
+                <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
+                  Level {state.tournamentLevel} · Hand #{state.handNumber}
+                </div>
+                <Link
+                  href="/"
+                  style={{
+                    display: "block", marginTop: 12, padding: "12px", borderRadius: 12,
+                    fontWeight: 900, fontSize: 12, letterSpacing: 2,
+                    textTransform: "uppercase",
+                    background: "linear-gradient(135deg, #14532d, #c9a84c)",
+                    color: "#000", textDecoration: "none",
+                  }}
+                >
+                  New Tournament
+                </Link>
+              </div>
+            ) : (
+              <>
+                {isAtShowdown && handSummary && (
+                  <button
+                    onClick={() => setShowReview(true)}
+                    style={{
+                      width: "100%", padding: "12px", borderRadius: 12,
+                      fontWeight: 900, fontSize: 11, letterSpacing: 2,
+                      textTransform: "uppercase",
+                      background: "rgba(99,102,241,0.12)",
+                      color: "#a5b4fc",
+                      border: "1px solid rgba(99,102,241,0.3)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    📊 Review Hand
+                  </button>
+                )}
+                <button
+                  onClick={onNewHand}
+                  style={{
+                    width: "100%", padding: "14px", borderRadius: 12,
+                    fontWeight: 900, fontSize: 13, letterSpacing: 2,
+                    textTransform: "uppercase",
+                    background: "linear-gradient(135deg, #78350f, #c9a84c)",
+                    color: "#000", border: "none", cursor: "pointer",
+                    boxShadow: "0 4px 20px rgba(201,168,76,0.25)",
+                  }}
+                >
+                  {isIdle ? "Start Game" : "Deal Next Hand"}
+                </button>
+              </>
             )}
-            <button
-              onClick={onNewHand}
-              style={{
-                width: "100%", padding: "14px", borderRadius: 12,
-                fontWeight: 900, fontSize: 13, letterSpacing: 2,
-                textTransform: "uppercase",
-                background: "linear-gradient(135deg, #78350f, #c9a84c)",
-                color: "#000", border: "none", cursor: "pointer",
-                boxShadow: "0 4px 20px rgba(201,168,76,0.25)",
-              }}
-            >
-              {isIdle ? "Start Game" : "Deal Next Hand"}
-            </button>
           </div>
         ) : (
           <div style={{ padding: "10px 16px", display: "flex", flexDirection: "column", gap: 8 }}>

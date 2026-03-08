@@ -4,6 +4,7 @@ import { GameState, Player, Card, GamePhase, PlayerAction, GameMode, AIPersonali
 import { createDeck, shuffleDeck } from "./deck";
 import { evaluateBestHand } from "./hand-evaluator";
 import { AI_MODELS_POOL } from "@/lib/openrouter";
+import { getLevelForHand } from "./tournament";
 
 // ─── Randomly assign models from pool, one per personality slot ─────────────
 function assignModels(): Record<AIPersonality, string> {
@@ -87,6 +88,8 @@ export function createInitialState(mode: GameMode = "normal"): GameState {
     dealerIndex: Math.floor(Math.random() * 6),
     smallBlind: 50,
     bigBlind: 100,
+    ante: 0,
+    tournamentLevel: 1,
     deck: [],
     handNumber: 0,
     mode,
@@ -130,6 +133,9 @@ export function createStateFromSave(save: SavedGameState, mode: GameMode): GameS
     handDescription: null,
   }));
 
+  // Determine the level for the upcoming hand
+  const nextLevel = getLevelForHand(save.handNumber + 1);
+
   return {
     phase: "idle",
     players,
@@ -137,12 +143,14 @@ export function createStateFromSave(save: SavedGameState, mode: GameMode): GameS
     mainPot: 0,
     sidePots: [],
     currentBet: 0,
-    minRaiseBy: 100,
+    minRaiseBy: nextLevel.bigBlind,
     toAct: [],
     currentPlayerIndex: 0,
     dealerIndex: save.dealerIndex,
-    smallBlind: 50,
-    bigBlind: 100,
+    smallBlind: nextLevel.smallBlind,
+    bigBlind: nextLevel.bigBlind,
+    ante: nextLevel.ante,
+    tournamentLevel: nextLevel.level,
     deck: [],
     handNumber: save.handNumber,
     mode,
@@ -196,6 +204,10 @@ export function startHand(state: GameState): GameState {
 
   const deck = shuffleDeck(createDeck());
 
+  // Determine blind level for this hand
+  const newHandNumber = state.handNumber + 1;
+  const level = getLevelForHand(newHandNumber);
+
   // Rotate dealer among alive players
   let newDealerIdx = state.dealerIndex;
   for (let i = 0; i < state.players.length; i++) {
@@ -205,7 +217,6 @@ export function startHand(state: GameState): GameState {
 
   const sbIdx = getNextActiveIdx(state.players, newDealerIdx);
   const bbIdx = getNextActiveIdx(state.players, sbIdx);
-  const utgIdx = getNextActiveIdx(state.players, bbIdx);
 
   // Reset all players
   const players: Player[] = state.players.map(p => ({
@@ -229,17 +240,31 @@ export function startHand(state: GameState): GameState {
   players[sbIdx].isSB = true;
   players[bbIdx].isBB = true;
 
-  // Post blinds
-  const sbAmt = Math.min(state.smallBlind, players[sbIdx].stack);
+  // Post antes (all alive players)
+  let antePot = 0;
+  if (level.ante > 0) {
+    players.forEach(p => {
+      if (!p.isEliminated) {
+        const anteAmt = Math.min(level.ante, p.stack);
+        p.stack -= anteAmt;
+        p.totalBetThisHand += anteAmt;
+        antePot += anteAmt;
+        if (p.stack === 0) p.isAllIn = true;
+      }
+    });
+  }
+
+  // Post blinds (use += so ante contributions are preserved)
+  const sbAmt = Math.min(level.smallBlind, players[sbIdx].stack);
   players[sbIdx].stack -= sbAmt;
   players[sbIdx].streetBet = sbAmt;
-  players[sbIdx].totalBetThisHand = sbAmt;
+  players[sbIdx].totalBetThisHand += sbAmt;
   if (players[sbIdx].stack === 0) players[sbIdx].isAllIn = true;
 
-  const bbAmt = Math.min(state.bigBlind, players[bbIdx].stack);
+  const bbAmt = Math.min(level.bigBlind, players[bbIdx].stack);
   players[bbIdx].stack -= bbAmt;
   players[bbIdx].streetBet = bbAmt;
-  players[bbIdx].totalBetThisHand = bbAmt;
+  players[bbIdx].totalBetThisHand += bbAmt;
   if (players[bbIdx].stack === 0) players[bbIdx].isAllIn = true;
 
   // Deal 2 cards each
@@ -260,15 +285,19 @@ export function startHand(state: GameState): GameState {
     phase: "preflop",
     players,
     communityCards: [],
-    mainPot: sbAmt + bbAmt,
+    mainPot: antePot + sbAmt + bbAmt,
     sidePots: [],
     currentBet: bbAmt,
     minRaiseBy: bbAmt,
     toAct,
     currentPlayerIndex: firstToAct,
     dealerIndex: newDealerIdx,
+    smallBlind: level.smallBlind,
+    bigBlind: level.bigBlind,
+    ante: level.ante,
+    tournamentLevel: level.level,
     deck: deck.slice(deckPos),
-    handNumber: state.handNumber + 1,
+    handNumber: newHandNumber,
     winners: [],
     lastAction: null,
     isWaitingForAI: !players[firstToAct].isHuman,

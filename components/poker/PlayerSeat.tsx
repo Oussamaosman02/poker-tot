@@ -159,7 +159,14 @@ export function PlayerSeat({ player, state, playerIdx, isAIThinking, showCards, 
       {/* Name + stack */}
       <div className="text-center px-2 py-0.5 rounded" style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}>
         <div className="text-[11px] font-bold text-white whitespace-nowrap">{player.name}</div>
-        <div className="text-[10px] text-yellow-400 font-mono">${player.stack.toLocaleString()}</div>
+        <div className="flex items-center justify-center gap-1">
+          <div className="text-[10px] text-yellow-400 font-mono">${player.stack.toLocaleString()}</div>
+          {state.bigBlind > 0 && player.stack > 0 && player.stack < 10 * state.bigBlind && (
+            <div className="text-[8px] font-black px-1 rounded bg-red-900/70 text-red-400 leading-tight">
+              {Math.floor(player.stack / state.bigBlind)}BB
+            </div>
+          )}
+        </div>
         {/* Stack dots bar */}
         <div className="mt-0.5 flex justify-center">
           <StackDots amount={player.stack} />
