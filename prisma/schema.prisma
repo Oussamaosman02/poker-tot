@@ -24,6 +24,9 @@ model PlayerStats {
   correctDecisions     Int      @default(0)
   totalDecisions       Int      @default(0)
   totalPlaytimeSeconds Int      @default(0)
+  quizAnswered         Int      @default(0)
+  quizCorrect          Int      @default(0)
+  quizPlaytimeSeconds  Int      @default(0)
   updatedAt            DateTime @updatedAt
 }
 

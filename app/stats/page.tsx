@@ -21,6 +21,9 @@ interface Stats {
   correctDecisions: number;
   totalDecisions: number;
   totalPlaytimeSeconds: number;
+  quizAnswered: number;
+  quizCorrect: number;
+  quizPlaytimeSeconds: number;
 }
 
 function formatPlaytime(seconds: number): string {
@@ -173,6 +176,46 @@ export default function StatsPage() {
                 color="#a78bfa"
               />
             </div>
+
+            {/* Quiz stats */}
+            {(stats.quizAnswered ?? 0) > 0 && (
+              <div
+                className="p-5 rounded-2xl mb-8"
+                style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-2xl">🃏</span>
+                  <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest">Pre-flop Quiz</h2>
+                  <a href="/quiz" className="ml-auto text-[10px] text-yellow-600 hover:text-yellow-400 font-bold uppercase tracking-widest transition-colors">
+                    Practice →
+                  </a>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <StatCard
+                    label="Questions"
+                    value={`${stats.quizAnswered}`}
+                    color="#c9a84c"
+                  />
+                  <StatCard
+                    label="Quiz Accuracy"
+                    value={`${Math.round((stats.quizCorrect / stats.quizAnswered) * 100)}%`}
+                    sub={`${stats.quizCorrect}/${stats.quizAnswered} correct`}
+                    color={
+                      Math.round((stats.quizCorrect / stats.quizAnswered) * 100) >= 70
+                        ? "#86efac"
+                        : Math.round((stats.quizCorrect / stats.quizAnswered) * 100) >= 50
+                        ? "#fcd34d"
+                        : "#fca5a5"
+                    }
+                  />
+                  <StatCard
+                    label="Quiz Time"
+                    value={formatPlaytime(stats.quizPlaytimeSeconds ?? 0)}
+                    color="#a78bfa"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Profit chart */}
             {chartData.length > 1 && (

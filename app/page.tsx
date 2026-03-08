@@ -208,6 +208,32 @@ export default function Home() {
         </div>
       )}
 
+      {/* Quiz section */}
+      <div className="w-full max-w-2xl mb-8">
+        <h2 className="text-xs font-black text-gray-500 uppercase tracking-[0.3em] mb-4 text-center">
+          Drill Mode
+        </h2>
+        <a
+          href="/quiz"
+          className="flex items-center gap-4 px-5 py-4 rounded-2xl ring-1 ring-white/10 hover:ring-yellow-500/50 hover:bg-white/5 transition-all group"
+          style={{ background: "rgba(201,168,76,0.05)" }}
+        >
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0" style={{ background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.2)" }}>
+            🃏
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-black text-white text-sm uppercase tracking-wider">Pre-flop Quiz</span>
+              <span className="text-[9px] font-black px-1.5 py-0.5 rounded text-yellow-400 uppercase tracking-wider" style={{ background: "rgba(201,168,76,0.15)" }}>New</span>
+            </div>
+            <p className="text-[11px] text-gray-400 leading-relaxed">
+              Test your pre-flop decisions — raise, call, or fold? 40+ GTO-based scenarios covering every position.
+            </p>
+          </div>
+          <div className="text-yellow-600 group-hover:text-yellow-400 transition-colors font-black text-lg">→</div>
+        </a>
+      </div>
+
       {/* Start button */}
       <button
         onClick={startGame}
