@@ -28,6 +28,12 @@ export async function POST(req: NextRequest) {
       opponents,
     } = body;
 
+    // Block expensive thinking models — replace with a cheap equivalent
+    const BLOCKED_MODELS: Record<string, string> = {
+      "google/gemini-2.5-pro": "google/gemini-2.5-flash",
+    };
+    const resolvedModel: string = BLOCKED_MODELS[model] ?? model;
+
     const personalityPrompt = PERSONALITY_PROMPTS[personality] ?? PERSONALITY_PROMPTS.TAG;
 
     const systemPrompt = `You are ${playerName}, a professional poker player. ${personalityPrompt}
@@ -52,7 +58,7 @@ Available actions: ${availableActions.join(", ")}
 Make your decision.`;
 
     const { object } = await generateObject({
-      model: openrouter(model),
+      model: openrouter(resolvedModel),
       schema: ActionSchema,
       system: systemPrompt,
       prompt: userPrompt,
