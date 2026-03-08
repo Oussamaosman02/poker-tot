@@ -13,6 +13,25 @@ import { evaluateBestHand } from "@/lib/poker/hand-evaluator";
 import { cardToString } from "@/lib/poker/deck";
 import { playYourTurnSound, playHandEndSound } from "@/lib/audio";
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Check if the player's action semantically matches the advisor hint.
+ * Handles cases where actions are equivalent (e.g. all-in == call when
+ * going all-in is the only way to call a shove, or raise == call when
+ * the "raise" brings the player all-in to match a bet).
+ */
+function actionMatchesHint(action: string, hint: string): boolean {
+  const h = hint.toLowerCase();
+  if (h.includes(action)) return true;
+  // all-in is a call when the hint says call/raise
+  if (action === "all-in" && (h.includes("call") || h.includes("raise"))) return true;
+  // check and call are the same when there's nothing to call (hint may say check, player hits call)
+  if (action === "check" && h.includes("call")) return true;
+  if (action === "call" && h.includes("check")) return true;
+  return false;
+}
+
 // ── Exported types ────────────────────────────────────────────────────────────
 
 export interface HandDecision {
@@ -275,12 +294,12 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
 
     // Record per-decision data (uses hint computed at turn start, always)
     const hint = advisorActionRef.current;
-    const isCorrect = hint ? hint.toLowerCase().includes(action) : null;
+    const isCorrect = hint ? actionMatchesHint(action, hint) : null;
     handDecisionsRef.current.push({ street, action, amount: amount ?? 0, advisorHint: hint, isCorrect });
 
     // Track per-decision correctness for training feedback (only when advisor displayed)
     if ((mode === "advisor" || mode === "training" || enableAdvisor) && advisorHint) {
-      const correct = advisorHint.toLowerCase().includes(action);
+      const correct = actionMatchesHint(action, advisorHint);
       handDecisionsTotal.current += 1;
       if (correct) handDecisionsCorrect.current += 1;
 
