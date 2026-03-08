@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { GameState, AvailableActions, PlayerAction } from "@/lib/poker/types";
 import { PlayingCard } from "./PlayingCard";
 import { ActionBar } from "./ActionBar";
-import { totalPot } from "@/lib/poker/game-engine";
+import { totalPot, getPositionLabel } from "@/lib/poker/game-engine";
 import { HandSummaryData } from "@/hooks/use-poker-game";
 
 interface PipWindowProps {
@@ -18,9 +18,10 @@ interface PipWindowProps {
   handSummary?: HandSummaryData | null;
   pendingAction?: "fold" | "check" | null;
   onSetPendingAction?: (a: "fold" | "check" | null) => void;
+  trainingFeedback?: string | null;
 }
 
-export function PipWindow({ state, availableActions, onAction, onNewHand, isOpen, onClose, handSummary, pendingAction, onSetPendingAction }: PipWindowProps) {
+export function PipWindow({ state, availableActions, onAction, onNewHand, isOpen, onClose, handSummary, pendingAction, onSetPendingAction, trainingFeedback }: PipWindowProps) {
   const pipWindowRef = useRef<Window | null>(null);
   const [pipRoot, setPipRoot] = useState<HTMLElement | null>(null);
 
@@ -81,10 +82,13 @@ export function PipWindow({ state, availableActions, onAction, onNewHand, isOpen
   }, [isOpen]);
 
   const [showReview, setShowReview] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   if (!pipRoot) return null;
 
   const human = state.players.find(p => p.isHuman);
+  const humanIdx = state.players.findIndex(p => p.isHuman);
+  const humanPosition = state.phase !== "idle" && humanIdx !== -1 ? getPositionLabel(state, humanIdx) : null;
   const pot = totalPot(state);
   const isHumanTurn = human?.isActive && availableActions;
   const showOdds = state.mode !== "normal";
@@ -107,7 +111,19 @@ export function PipWindow({ state, availableActions, onAction, onNewHand, isOpen
 
       {/* Your cards */}
       <div style={{ padding: "12px 14px 8px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-        <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 6, fontWeight: 700, letterSpacing: 2 }}>YOUR HAND</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+          <span style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 2 }}>YOUR HAND</span>
+          {humanPosition && (
+            <span style={{
+              fontSize: 9, fontWeight: 900, padding: "1px 5px", borderRadius: 4,
+              background: humanPosition === "BTN" ? "rgba(234,179,8,0.2)" : humanPosition === "SB" ? "rgba(37,99,235,0.2)" : humanPosition === "BB" ? "rgba(124,58,237,0.2)" : ["CO","HJ"].includes(humanPosition) ? "rgba(16,185,129,0.15)" : "rgba(107,114,128,0.15)",
+              border: `1px solid ${humanPosition === "BTN" ? "rgba(234,179,8,0.4)" : humanPosition === "SB" ? "rgba(37,99,235,0.35)" : humanPosition === "BB" ? "rgba(124,58,237,0.35)" : ["CO","HJ"].includes(humanPosition) ? "rgba(16,185,129,0.3)" : "rgba(107,114,128,0.3)"}`,
+              color: humanPosition === "BTN" ? "#fbbf24" : humanPosition === "SB" ? "#60a5fa" : humanPosition === "BB" ? "#a78bfa" : ["CO","HJ"].includes(humanPosition) ? "#34d399" : "#9ca3af",
+            }}>
+              {humanPosition}
+            </span>
+          )}
+        </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           {human?.holeCards?.map((card, i) => (
             <PlayingCard key={i} card={card} size="md" />
@@ -159,6 +175,8 @@ export function PipWindow({ state, availableActions, onAction, onNewHand, isOpen
       {/* Players status */}
       <div style={{ padding: "4px 14px 8px", display: "flex", flexDirection: "column", gap: 3, flex: 1, overflowY: "auto" }}>
         {state.players.filter(p => !p.isEliminated && !p.isHuman).map(p => {
+          const pIdx = state.players.findIndex(pl => pl.id === p.id);
+          const pos = state.phase !== "idle" ? getPositionLabel(state, pIdx) : null;
           const isActive = p.isActive;
           const actionLabel = p.lastAction
             ? p.lastAction.toUpperCase() + ((p.lastAction === "raise" || p.lastAction === "call" || p.lastAction === "all-in") && p.lastActionAmount > 0 ? ` $${p.lastActionAmount.toLocaleString()}` : "")
@@ -175,6 +193,13 @@ export function PipWindow({ state, availableActions, onAction, onNewHand, isOpen
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 {isActive && <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#fbbf24" }} />}
                 <span style={{ fontSize: 11, fontWeight: 700, color: p.isFolded ? "#6b7280" : "#e5e7eb" }}>{p.name}</span>
+                {pos && (
+                  <span style={{
+                    fontSize: 8, fontWeight: 900, padding: "1px 4px", borderRadius: 3,
+                    background: pos === "BTN" ? "rgba(234,179,8,0.15)" : pos === "SB" ? "rgba(37,99,235,0.15)" : pos === "BB" ? "rgba(124,58,237,0.15)" : "rgba(107,114,128,0.12)",
+                    color: pos === "BTN" ? "#fbbf24" : pos === "SB" ? "#60a5fa" : pos === "BB" ? "#a78bfa" : "#6b7280",
+                  }}>{pos}</span>
+                )}
                 {p.isFolded && <span style={{ fontSize: 9, color: "#6b7280" }}>FOLD</span>}
                 {p.isAllIn && <span style={{ fontSize: 9, color: "#ef4444", fontWeight: 900 }}>ALL IN</span>}
               </div>
@@ -272,6 +297,32 @@ export function PipWindow({ state, availableActions, onAction, onNewHand, isOpen
             <div style={{ textAlign: "center", fontSize: 11, color: "#6b7280" }}>
               {state.isWaitingForAI ? "AI is thinking..." : "Waiting..."}
             </div>
+            {trainingFeedback && (
+              <>
+                <button
+                  onClick={() => setShowFeedback(v => !v)}
+                  style={{
+                    padding: "4px 12px", borderRadius: 8, fontSize: 9, fontWeight: 700,
+                    cursor: "pointer", letterSpacing: 1, textTransform: "uppercase",
+                    background: showFeedback ? "rgba(99,102,241,0.2)" : "rgba(255,255,255,0.05)",
+                    border: showFeedback ? "1px solid rgba(99,102,241,0.4)" : "1px solid rgba(255,255,255,0.1)",
+                    color: showFeedback ? "#a5b4fc" : "#6b7280",
+                  }}
+                >
+                  📊 {showFeedback ? "Hide Feedback" : "Show Feedback"}
+                </button>
+                {showFeedback && (
+                  <div style={{
+                    fontSize: 10, textAlign: "center", padding: "5px 10px", borderRadius: 7,
+                    background: trainingFeedback === "Good decision!" ? "rgba(74,222,128,0.08)" : "rgba(251,191,36,0.08)",
+                    border: `1px solid ${trainingFeedback === "Good decision!" ? "rgba(74,222,128,0.25)" : "rgba(251,191,36,0.25)"}`,
+                    color: trainingFeedback === "Good decision!" ? "#86efac" : "#fcd34d",
+                  }}>
+                    {trainingFeedback}
+                  </div>
+                )}
+              </>
+            )}
             {showPreAction && (
               <div style={{ display: "flex", gap: 6, justifyContent: "center", alignItems: "center" }}>
                 <span style={{ fontSize: 9, color: "#4b5563", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Pre:</span>

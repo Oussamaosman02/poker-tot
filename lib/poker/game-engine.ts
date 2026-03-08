@@ -608,7 +608,21 @@ export function getPositionLabel(state: GameState, playerIdx: number): string {
   if (p.isDealer) return "BTN";
   if (p.isSB) return "SB";
   if (p.isBB) return "BB";
-  // Relative position from dealer
-  const n = state.players.filter(pl => !pl.isEliminated).length;
-  return n <= 4 ? "MP" : "UTG";
+
+  const active = state.players.filter(pl => !pl.isEliminated);
+  const n = active.length;
+  const dealerIdx = active.findIndex(pl => pl.isDealer);
+  const myIdx = active.findIndex(pl => pl.id === p.id);
+  if (dealerIdx === -1 || myIdx === -1) return "MP";
+
+  // Clockwise distance from dealer: 0=BTN, 1=SB, 2=BB, 3=UTG, …, n-1=CO
+  const dist = (myIdx - dealerIdx + n) % n;
+  const spotsAfterBB = n - 3; // seats from UTG to CO inclusive
+  const fromUTG = dist - 3;   // 0=UTG, spotsAfterBB-1=CO
+
+  if (spotsAfterBB <= 1) return "UTG";
+  if (fromUTG === spotsAfterBB - 1) return "CO";
+  if (fromUTG === spotsAfterBB - 2) return n >= 6 ? "HJ" : "MP";
+  if (fromUTG === 0) return "UTG";
+  return "UTG+1";
 }

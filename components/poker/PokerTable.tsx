@@ -302,6 +302,8 @@ export function PokerTable({
                 "Waiting for players..."
               )}
             </div>
+            {/* Training feedback — shown on demand */}
+            {trainingFeedback && <FeedbackButton feedback={trainingFeedback} />}
             {/* Pre-action buttons — shown while AI acts and human is still in the hand */}
             {!humanFolded && onSetPendingAction && (
               <div className="flex gap-2 items-center">
@@ -375,6 +377,7 @@ export function PokerTable({
         handSummary={handSummary}
         pendingAction={pendingAction}
         onSetPendingAction={onSetPendingAction}
+        trainingFeedback={trainingFeedback}
       />
 
       {/* Hand review modal */}
@@ -383,6 +386,39 @@ export function PokerTable({
       )}
       </div>
     </>
+  );
+}
+
+// ── Feedback toggle button ────────────────────────────────────────────────────
+function FeedbackButton({ feedback }: { feedback: string }) {
+  const [show, setShow] = useState(false);
+  const isGood = feedback === "Good decision!";
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <button
+        onClick={() => setShow(v => !v)}
+        className="px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all"
+        style={{
+          background: show ? "rgba(99,102,241,0.2)" : "rgba(255,255,255,0.05)",
+          border: show ? "1px solid rgba(99,102,241,0.4)" : "1px solid rgba(255,255,255,0.1)",
+          color: show ? "#a5b4fc" : "#6b7280",
+        }}
+      >
+        📊 {show ? "Hide Feedback" : "Show Feedback"}
+      </button>
+      {show && (
+        <div
+          className="text-xs font-medium py-1.5 px-3 rounded-lg"
+          style={{
+            background: isGood ? "rgba(74,222,128,0.08)" : "rgba(251,191,36,0.08)",
+            border: `1px solid ${isGood ? "rgba(74,222,128,0.25)" : "rgba(251,191,36,0.25)"}`,
+            color: isGood ? "#86efac" : "#fcd34d",
+          }}
+        >
+          {feedback}
+        </div>
+      )}
+    </div>
   );
 }
 

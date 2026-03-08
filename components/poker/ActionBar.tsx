@@ -34,19 +34,10 @@ export function ActionBar({ actions, onAction, advisorHint, trainingFeedback, po
 
   return (
     <div className={cn("flex flex-col gap-2", isCompact ? "px-2" : "px-4")}>
-      {/* Advisor / Training feedback */}
-      {(advisorHint || trainingFeedback) && (
-        <div
-          className={cn(
-            "text-center text-xs font-medium py-1.5 px-3 rounded-lg",
-            trainingFeedback
-              ? trainingFeedback === "Good decision!"
-                ? "bg-green-900/60 text-green-300 border border-green-700/40"
-                : "bg-yellow-900/60 text-yellow-300 border border-yellow-700/40"
-              : "bg-blue-900/60 text-blue-200 border border-blue-700/40"
-          )}
-        >
-          {trainingFeedback ?? `💡 ${advisorHint}`}
+      {/* Advisor hint */}
+      {advisorHint && (
+        <div className="text-center text-xs font-medium py-1.5 px-3 rounded-lg bg-blue-900/60 text-blue-200 border border-blue-700/40">
+          💡 {advisorHint}
         </div>
       )}
 

@@ -138,6 +138,7 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
     if (human.holeCards.length < 2) return null;
 
     const actions = getAvailableActions(state, humanIdx);
+    const position = getPositionLabel(state, humanIdx);
     let strength = 0;
 
     if (state.communityCards.length === 0) {
@@ -149,19 +150,26 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
 
     const potOdds = actions.callAmount > 0 ? actions.callAmount / (totalPot(state) + actions.callAmount) : 0;
 
+    // Position modifier: late position = looser, early = tighter
+    const isLate = ["BTN", "CO"].includes(position);
+    const isEarly = ["UTG", "UTG+1", "SB"].includes(position);
+    const adjusted = Math.max(0, Math.min(1, strength + (isLate ? 0.08 : isEarly ? -0.08 : 0)));
+
     let hint = "";
-    if (strength > 0.75) {
+    if (adjusted > 0.75) {
       hint = actions.canRaise
-        ? `Strong hand — consider raising to $${Math.min(actions.minRaise * 2, actions.maxRaise).toLocaleString()}`
-        : "Strong hand — call";
-    } else if (strength > 0.5) {
+        ? `Strong hand (${position}) — raise to $${Math.min(actions.minRaise * 2, actions.maxRaise).toLocaleString()}`
+        : `Strong hand (${position}) — call`;
+    } else if (adjusted > 0.5) {
       hint = potOdds < 0.25
-        ? "Decent hand, pot odds are good — call"
-        : "Marginal hand — consider calling or folding";
-    } else if (strength > 0.3 && potOdds < 0.15) {
-      hint = "Weak hand but good pot odds — call or fold";
+        ? `Decent hand (${position}), good pot odds — call`
+        : `Marginal hand (${position}) — consider calling or folding`;
+    } else if (adjusted > 0.3 && potOdds < 0.15) {
+      hint = `Weak hand (${position}) but good pot odds — call or fold`;
     } else {
-      hint = actions.canCheck ? "Weak hand — check" : "Weak hand — fold";
+      hint = isEarly
+        ? (actions.canCheck ? `Weak hand (${position}) — check, play tight` : `Fold (${position} — play tight)`)
+        : (actions.canCheck ? `Weak hand (${position}) — check` : `Weak hand (${position}) — fold`);
     }
 
     return hint;
@@ -248,6 +256,7 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
     if (humanIdx !== -1 && human?.isActive) {
       const hint = computeAdvisorHintValue(gameState);
       advisorActionRef.current = hint;
+      setTrainingFeedback(null); // clear previous feedback at start of new turn
       if (mode === "advisor" || mode === "training" || enableAdvisor) {
         setAdvisorHint(hint);
       } else {
@@ -306,10 +315,8 @@ export function usePokerGame(mode: GameMode, sessionId: string | null, enableAdv
       if (mode === "training" || enableAdvisor) {
         if (!correct) {
           setTrainingFeedback(`Advisor suggested: ${advisorHint}`);
-          setTimeout(() => setTrainingFeedback(null), 4000);
         } else {
           setTrainingFeedback("Good decision!");
-          setTimeout(() => setTrainingFeedback(null), 2000);
         }
       }
     }

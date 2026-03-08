@@ -5,7 +5,7 @@ import { GameState, AvailableActions, PlayerAction } from "@/lib/poker/types";
 import { PlayingCard } from "./PlayingCard";
 import { ActionBar } from "./ActionBar";
 import { HandReviewModal } from "./HandReviewModal";
-import { totalPot } from "@/lib/poker/game-engine";
+import { totalPot, getPositionLabel } from "@/lib/poker/game-engine";
 import { HandSummaryData } from "@/hooks/use-poker-game";
 import { handsRemainingInLevel, TOURNAMENT_LEVELS } from "@/lib/poker/tournament";
 import Link from "next/link";
@@ -57,8 +57,11 @@ export function MobileGameView({
   onSetPendingAction,
 }: MobileGameViewProps) {
   const [showReview, setShowReview] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   const human = state.players.find(p => p.isHuman);
+  const humanIdx = state.players.findIndex(p => p.isHuman);
+  const humanPosition = state.phase !== "idle" && humanIdx !== -1 ? getPositionLabel(state, humanIdx) : null;
   const pot = totalPot(state);
   const isHumanTurn = !!(human?.isActive && availableActions);
   const showOdds = state.mode !== "normal";
@@ -144,8 +147,30 @@ export function MobileGameView({
       }}>
         {/* Hole cards */}
         <div>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "#6b7280", marginBottom: 5 }}>
-            YOUR HAND
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "#6b7280" }}>YOUR HAND</span>
+            {humanPosition && (
+              <span style={{
+                fontSize: 9, fontWeight: 900, padding: "1px 5px", borderRadius: 4,
+                background: humanPosition === "BTN" ? "rgba(234,179,8,0.2)" :
+                            humanPosition === "SB" ? "rgba(37,99,235,0.2)" :
+                            humanPosition === "BB" ? "rgba(124,58,237,0.2)" :
+                            ["CO","HJ"].includes(humanPosition) ? "rgba(16,185,129,0.15)" :
+                            "rgba(107,114,128,0.15)",
+                border: `1px solid ${humanPosition === "BTN" ? "rgba(234,179,8,0.4)" :
+                                     humanPosition === "SB" ? "rgba(37,99,235,0.35)" :
+                                     humanPosition === "BB" ? "rgba(124,58,237,0.35)" :
+                                     ["CO","HJ"].includes(humanPosition) ? "rgba(16,185,129,0.3)" :
+                                     "rgba(107,114,128,0.3)"}`,
+                color: humanPosition === "BTN" ? "#fbbf24" :
+                       humanPosition === "SB" ? "#60a5fa" :
+                       humanPosition === "BB" ? "#a78bfa" :
+                       ["CO","HJ"].includes(humanPosition) ? "#34d399" :
+                       "#9ca3af",
+              }}>
+                {humanPosition}
+              </span>
+            )}
           </div>
           <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
             {human?.holeCards?.length === 2 ? (
@@ -259,6 +284,8 @@ export function MobileGameView({
       {/* ── Players list ──────────────────────────────────────────── */}
       <div style={{ flex: 1, overflowY: "auto", padding: "6px 16px" }}>
         {state.players.filter(p => !p.isEliminated && !p.isHuman).map(p => {
+          const pIdx = state.players.findIndex(pl => pl.id === p.id);
+          const pos = state.phase !== "idle" ? getPositionLabel(state, pIdx) : null;
           const isActive = p.isActive;
           const actionLabel = p.lastAction
             ? p.lastAction.toUpperCase() +
@@ -288,11 +315,20 @@ export function MobileGameView({
                   <span style={{ fontSize: 12 }}>🏆</span>
                 )}
                 <div>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: p.isFolded ? "#6b7280" : "#e5e7eb" }}>
-                    {p.name}
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: p.isFolded ? "#6b7280" : "#e5e7eb" }}>
+                      {p.name}
+                    </span>
+                    {pos && (
+                      <span style={{
+                        fontSize: 8, fontWeight: 900, padding: "1px 4px", borderRadius: 3,
+                        background: pos === "BTN" ? "rgba(234,179,8,0.15)" : pos === "SB" ? "rgba(37,99,235,0.15)" : pos === "BB" ? "rgba(124,58,237,0.15)" : "rgba(107,114,128,0.12)",
+                        color: pos === "BTN" ? "#fbbf24" : pos === "SB" ? "#60a5fa" : pos === "BB" ? "#a78bfa" : "#6b7280",
+                      }}>{pos}</span>
+                    )}
+                  </div>
                   {p.personality && (
-                    <span style={{ fontSize: 9, color: "#4b5563", marginLeft: 4 }}>{p.personality}</span>
+                    <span style={{ fontSize: 9, color: "#4b5563" }}>{p.personality}</span>
                   )}
                 </div>
                 {p.isFolded && <span style={{ fontSize: 9, color: "#6b7280" }}>FOLD</span>}
@@ -404,6 +440,32 @@ export function MobileGameView({
                 "Waiting for players..."
               )}
             </div>
+            {trainingFeedback && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
+                <button
+                  onClick={() => setShowFeedback(v => !v)}
+                  style={{
+                    padding: "5px 14px", borderRadius: 8, fontSize: 10, fontWeight: 700,
+                    cursor: "pointer", letterSpacing: 1, textTransform: "uppercase",
+                    background: showFeedback ? "rgba(99,102,241,0.2)" : "rgba(255,255,255,0.05)",
+                    border: showFeedback ? "1px solid rgba(99,102,241,0.4)" : "1px solid rgba(255,255,255,0.1)",
+                    color: showFeedback ? "#a5b4fc" : "#6b7280",
+                  }}
+                >
+                  📊 {showFeedback ? "Hide Feedback" : "Show Feedback"}
+                </button>
+                {showFeedback && (
+                  <div style={{
+                    fontSize: 11, textAlign: "center", padding: "6px 12px", borderRadius: 8,
+                    background: trainingFeedback === "Good decision!" ? "rgba(74,222,128,0.08)" : "rgba(251,191,36,0.08)",
+                    border: `1px solid ${trainingFeedback === "Good decision!" ? "rgba(74,222,128,0.25)" : "rgba(251,191,36,0.25)"}`,
+                    color: trainingFeedback === "Good decision!" ? "#86efac" : "#fcd34d",
+                  }}>
+                    {trainingFeedback}
+                  </div>
+                )}
+              </div>
+            )}
             {showPreAction && (
               <div style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center" }}>
                 <span style={{ fontSize: 9, color: "#4b5563", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Pre-action:</span>
