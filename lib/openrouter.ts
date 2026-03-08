@@ -11,7 +11,6 @@ export const openrouter = createOpenAI({
 
 export const AI_MODELS_POOL = [
   "google/gemini-2.5-flash",
-  "google/gemini-2.5-pro",
   "google/gemini-2.0-flash-001",
   "google/gemini-3-flash-preview",
   "openai/gpt-4o-mini",

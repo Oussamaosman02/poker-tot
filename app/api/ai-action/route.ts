@@ -6,7 +6,6 @@ import { NextRequest, NextResponse } from "next/server";
 const ActionSchema = z.object({
   action: z.enum(["fold", "check", "call", "raise", "all-in"]),
   amount: z.number().optional(),
-  reasoning: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
