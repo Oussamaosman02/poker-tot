@@ -28,9 +28,12 @@ export async function POST(req: NextRequest) {
       opponents,
     } = body;
 
-    // Block expensive thinking models — replace with a cheap equivalent
+    // Redirect thinking/reasoning models to non-thinking equivalents
     const BLOCKED_MODELS: Record<string, string> = {
-      "google/gemini-2.5-pro": "google/gemini-2.5-flash",
+      "google/gemini-2.5-pro":      "google/gemini-2.0-flash-001",
+      "google/gemini-2.5-flash":    "google/gemini-2.0-flash-001",
+      "google/gemini-3-flash-preview": "google/gemini-2.0-flash-001",
+      "x-ai/grok-3-mini":           "openai/gpt-4o-mini",
     };
     const resolvedModel: string = BLOCKED_MODELS[model] ?? model;
 
