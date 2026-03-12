@@ -46,12 +46,12 @@ Next.js 16 App Router poker training app. All game logic runs client-side; the s
 
 ### File split — CRITICAL for Netlify Edge
 ```
-auth.config.ts   ← No Prisma/bcrypt. JWT callbacks + pages only. Used by proxy.ts.
+auth.config.ts   ← No Prisma/bcrypt. JWT callbacks + pages only. Used by middleware.ts.
 auth.ts          ← Full config with Prisma user lookup. Used by API routes only.
-proxy.ts         ← Imports auth.config.ts (NOT auth.ts). Safe for Netlify Edge.
+middleware.ts    ← Imports auth.config.ts (NOT auth.ts). Safe for Netlify Edge.
 ```
 
-**Never import `auth.ts`, `prisma`, or `bcrypt` from `proxy.ts`**. Netlify Edge Functions can't run native C++ addons (Prisma's `libquery_engine.so`). If you add middleware logic, always import from `auth.config.ts`.
+**Never import `auth.ts`, `prisma`, or `bcrypt` from `middleware.ts`**. Netlify Edge Functions can't run native C++ addons (Prisma's `libquery_engine.so`). If you add middleware logic, always import from `auth.config.ts`.
 
 ### Auth utility
 `lib/auth-utils.ts` exports `getUserId(req)` — checks Bearer token first, then falls back to Auth.js session cookie. Use this in every protected API route.
