@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 
 interface Stats {
@@ -74,6 +75,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string; 
 }
 
 export default function StatsPage() {
+  useSession({ required: true });
   const [stats, setStats] = useState<Stats | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);

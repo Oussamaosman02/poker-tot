@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { GameMode } from "@/lib/poker/types";
 
 interface ResumableSession {
@@ -48,6 +48,7 @@ const MODES: { id: GameMode; label: string; description: string; color: string; 
 const MODE_ICONS: Record<GameMode, string> = { normal: "♠", vision: "👁", advisor: "💡", training: "🎯" };
 
 export default function Home() {
+  useSession({ required: true });
   const router = useRouter();
   const [selected, setSelected] = useState<GameMode>("normal");
   const [loading, setLoading] = useState(false);

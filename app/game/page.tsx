@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { GameMode } from "@/lib/poker/types";
 import { usePokerGame } from "@/hooks/use-poker-game";
 import { SavedGameState } from "@/lib/poker/game-engine";
@@ -70,6 +71,7 @@ function GameInner() {
 }
 
 export default function GamePage() {
+  useSession({ required: true });
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center" style={{ background: "#050A14" }}>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import {
   PreflopScenario,
   QuizAction,
@@ -65,6 +66,7 @@ interface SessionStats {
 }
 
 export default function QuizPage() {
+  useSession({ required: true });
   const [scenario, setScenario] = useState<PreflopScenario | null>(null);
   const [answered, setAnswered] = useState<QuizAction | null>(null);
   const [played, setPlayed] = useState<string[]>([]);
