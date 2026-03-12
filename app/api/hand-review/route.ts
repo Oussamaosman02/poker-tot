@@ -1,12 +1,15 @@
 import { generateText } from "ai";
 import { openrouter } from "@/lib/openrouter";
 import { NextRequest, NextResponse } from "next/server";
+import { extractUsage, trackAIUsage } from "@/lib/ai-usage-tracking";
+import { getUserId } from "@/lib/auth-utils";
 
 interface ActionEntry { playerName: string; isHuman: boolean; street: string; action: string; amount: number; }
 interface OpponentSummary { name: string; personality: string | null; holeCards: string[]; finalStack: number; isFolded: boolean; isWinner: boolean; }
 interface Decision { street: string; action: string; amount: number; advisorHint: string | null; isCorrect: boolean | null; }
 
 export async function POST(req: NextRequest) {
+  const userId = await getUserId(req).catch(() => null);
   const body = await req.json().catch(() => ({}));
 
   const { handNumber, holeCards, communityCards, decisions, result, profitLoss, score, allActions, opponentSummaries } = body;
@@ -64,10 +67,16 @@ ${decisionsText || "No voluntary decisions."}
 Give 2-3 sentences of poker coaching. Consider how opponents played (their bets, raises, folds) and what that means for how the player should have responded. Reference specific players and actions where relevant.`;
 
   try {
-    const { text } = await generateText({
+    const { text, usage, providerMetadata } = await generateText({
       model: openrouter("google/gemini-2.5-flash"),
       prompt,
       maxOutputTokens: 180,
+    });
+
+    trackAIUsage(extractUsage(usage, providerMetadata), {
+      userId,
+      model: "google/gemini-2.5-flash",
+      operationType: "HAND_REVIEW",
     });
 
     return NextResponse.json({ feedback: text.trim() });

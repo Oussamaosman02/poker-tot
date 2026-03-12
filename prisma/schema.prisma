@@ -8,14 +8,31 @@ datasource db {
 }
 
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
-  username     String       @unique
+  id           String           @id @default(cuid())
+  email        String           @unique
+  username     String           @unique
   passwordHash String
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
   stats        PlayerStats?
   sessions     Session[]
+  aiUsage      AIUsageRecord[]
+}
+
+model AIUsageRecord {
+  id               String   @id @default(cuid())
+  userId           String?
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  model            String
+  operationType    String
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  totalTokens      Int      @default(0)
+  cost             Float?
+  createdAt        DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model PlayerStats {

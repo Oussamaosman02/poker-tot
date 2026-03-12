@@ -2,6 +2,8 @@ import { generateObject } from "ai";
 import { z } from "zod";
 import { openrouter, PERSONALITY_PROMPTS } from "@/lib/openrouter";
 import { NextRequest, NextResponse } from "next/server";
+import { extractUsage, trackAIUsage } from "@/lib/ai-usage-tracking";
+import { getUserId } from "@/lib/auth-utils";
 
 const ActionSchema = z.object({
   action: z.enum(["fold", "check", "call", "raise", "all-in"]),
@@ -10,6 +12,7 @@ const ActionSchema = z.object({
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
+  const userId = await getUserId(req).catch(() => null);
   try {
     const {
       model,
@@ -60,11 +63,17 @@ Available actions: ${availableActions.join(", ")}
 
 Make your decision.`;
 
-    const { object } = await generateObject({
+    const { object, usage, providerMetadata } = await generateObject({
       model: openrouter(resolvedModel),
       schema: ActionSchema,
       system: systemPrompt,
       prompt: userPrompt,
+    });
+
+    trackAIUsage(extractUsage(usage, providerMetadata), {
+      userId,
+      model: resolvedModel,
+      operationType: "AI_ACTION",
     });
 
     // Validate the action is in available actions
