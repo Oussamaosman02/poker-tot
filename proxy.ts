@@ -1,5 +1,8 @@
-import { auth } from "@/auth";
+import NextAuth from "next-auth";
+import { authConfig } from "./auth.config";
 import { NextResponse } from "next/server";
+
+const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
@@ -15,7 +18,6 @@ export default auth((req) => {
   const isPublicPage = pathname === "/" || pathname === "/login" || pathname === "/register";
 
   if (isPublicPage) {
-    // Redirect logged-in users away from landing/auth pages to /home
     if (isLoggedIn) return NextResponse.redirect(new URL("/home", req.url));
     return NextResponse.next();
   }
