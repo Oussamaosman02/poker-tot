@@ -1,14 +1,18 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { getUserId } from "@/lib/auth-utils";
 
 export async function POST(req: NextRequest) {
   try {
+    const userId = await getUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { isCorrect, timeSpentMs } = await req.json();
 
     await prisma.playerStats.upsert({
-      where: { id: "singleton" },
+      where: { userId },
       create: {
-        id: "singleton",
+        userId,
         quizAnswered: 1,
         quizCorrect: isCorrect ? 1 : 0,
         quizPlaytimeSeconds: Math.round(timeSpentMs / 1000),
@@ -29,9 +33,12 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const stats = await prisma.playerStats.findUnique({ where: { id: "singleton" } });
+    const userId = await getUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const stats = await prisma.playerStats.findUnique({ where: { userId } });
     return NextResponse.json({
       quizAnswered: stats?.quizAnswered ?? 0,
       quizCorrect: stats?.quizCorrect ?? 0,

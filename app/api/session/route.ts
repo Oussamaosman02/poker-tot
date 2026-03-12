@@ -1,13 +1,17 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { getUserId } from "@/lib/auth-utils";
 
 export async function GET(req: NextRequest) {
   try {
+    const userId = await getUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const id = req.nextUrl.searchParams.get("id");
 
     if (id) {
-      const session = await prisma.session.findUnique({
-        where: { id },
+      const session = await prisma.session.findFirst({
+        where: { id, userId },
         select: { id: true, mode: true, savedState: true },
       });
       if (!session) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -18,7 +22,7 @@ export async function GET(req: NextRequest) {
     }
 
     const sessions = await prisma.session.findMany({
-      where: { endedAt: null },
+      where: { userId, endedAt: null },
       orderBy: { startedAt: "desc" },
       select: {
         id: true,
@@ -44,27 +48,32 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const userId = await getUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { action, sessionId, mode, startStack, finalStack, handsPlayed, profit, savedState, playtimeSeconds } = await req.json();
 
     if (action === "start") {
       const session = await prisma.session.create({
-        data: { mode, startStack, finalStack: startStack },
+        data: { userId, mode, startStack, finalStack: startStack },
       });
       await prisma.playerStats.upsert({
-        where: { id: "singleton" },
-        create: { id: "singleton", sessionsPlayed: 1 },
+        where: { userId },
+        create: { userId, sessionsPlayed: 1 },
         update: { sessionsPlayed: { increment: 1 } },
       });
       return NextResponse.json({ sessionId: session.id });
     }
 
     if (action === "save" && sessionId) {
-      const prev = await prisma.session.findUnique({
-        where: { id: sessionId },
+      const prev = await prisma.session.findFirst({
+        where: { id: sessionId, userId },
         select: { playtimeSeconds: true },
       });
+      if (!prev) return NextResponse.json({ error: "Session not found" }, { status: 404 });
+
       const newPlaytime = typeof playtimeSeconds === "number" ? playtimeSeconds : 0;
-      const addedSeconds = Math.max(0, newPlaytime - (prev?.playtimeSeconds ?? 0));
+      const addedSeconds = Math.max(0, newPlaytime - (prev.playtimeSeconds ?? 0));
 
       await prisma.session.update({
         where: { id: sessionId },
@@ -77,8 +86,8 @@ export async function POST(req: NextRequest) {
       });
       if (addedSeconds > 0) {
         await prisma.playerStats.upsert({
-          where: { id: "singleton" },
-          create: { id: "singleton", totalPlaytimeSeconds: addedSeconds },
+          where: { userId },
+          create: { userId, totalPlaytimeSeconds: addedSeconds },
           update: { totalPlaytimeSeconds: { increment: addedSeconds } },
         });
       }
@@ -86,8 +95,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "end" && sessionId) {
-      await prisma.session.update({
-        where: { id: sessionId },
+      await prisma.session.updateMany({
+        where: { id: sessionId, userId },
         data: { endedAt: new Date(), finalStack, handsPlayed, profit },
       });
       return NextResponse.json({ ok: true });

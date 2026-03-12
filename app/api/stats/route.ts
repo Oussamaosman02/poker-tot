@@ -1,10 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { getUserId } from "@/lib/auth-utils";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const stats = await prisma.playerStats.findUnique({ where: { id: "singleton" } });
+    const userId = await getUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const stats = await prisma.playerStats.findUnique({ where: { userId } });
     const sessions = await prisma.session.findMany({
+      where: { userId },
       orderBy: { startedAt: "desc" },
       take: 10,
       include: { hands: { orderBy: { createdAt: "asc" } } },
@@ -17,9 +22,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const userId = await getUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { sessionId, hand } = await req.json();
 
-    // Save hand
     await prisma.hand.create({
       data: {
         sessionId,
@@ -38,11 +45,10 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Update aggregate stats
     await prisma.playerStats.upsert({
-      where: { id: "singleton" },
+      where: { userId },
       create: {
-        id: "singleton",
+        userId,
         totalHands: 1,
         handsWon: hand.result === "won" ? 1 : 0,
         handsLost: hand.result === "lost" ? 1 : 0,

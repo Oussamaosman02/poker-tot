@@ -1,0 +1,286 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
+import { GameMode } from "@/lib/poker/types";
+
+interface ResumableSession {
+  id: string;
+  mode: GameMode;
+  startedAt: string;
+  handsPlayed: number;
+  finalStack: number;
+  startStack: number;
+}
+
+const MODES: { id: GameMode; label: string; description: string; color: string; icon: string }[] = [
+  {
+    id: "normal",
+    label: "Normal",
+    description: "Play like a real game — no extra info, just your cards and reads",
+    color: "from-gray-800 to-gray-700",
+    icon: "♠",
+  },
+  {
+    id: "vision",
+    label: "Vision",
+    description: "See all players' hole cards — great for studying hand matchups",
+    color: "from-purple-900 to-purple-800",
+    icon: "👁",
+  },
+  {
+    id: "advisor",
+    label: "Advisor",
+    description: "Get real-time hints on every decision based on pot odds & hand strength",
+    color: "from-blue-900 to-blue-800",
+    icon: "💡",
+  },
+  {
+    id: "training",
+    label: "Training",
+    description: "Play with advisor hints AND get feedback on your decisions after each action",
+    color: "from-green-900 to-green-800",
+    icon: "🎯",
+  },
+];
+
+const MODE_ICONS: Record<GameMode, string> = { normal: "♠", vision: "👁", advisor: "💡", training: "🎯" };
+
+export default function Home() {
+  const router = useRouter();
+  const [selected, setSelected] = useState<GameMode>("normal");
+  const [loading, setLoading] = useState(false);
+  const [resumable, setResumable] = useState<ResumableSession[]>([]);
+
+  useEffect(() => {
+    fetch("/api/session")
+      .then(r => r.json())
+      .then(data => setResumable(data.sessions ?? []))
+      .catch(() => {});
+  }, []);
+
+  const startGame = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "start", mode: selected, startStack: 10000 }),
+      });
+      const { sessionId } = await res.json();
+      router.push(`/game?mode=${selected}&session=${sessionId}`);
+    } catch {
+      router.push(`/game?mode=${selected}`);
+    }
+  };
+
+  return (
+    <main
+      className="min-h-screen flex flex-col items-center justify-center px-6 py-12"
+      style={{
+        background: "linear-gradient(160deg, #020810 0%, #050A14 40%, #040d1a 100%)",
+      }}
+    >
+      {/* Header row with sign out */}
+      <div className="w-full max-w-2xl flex justify-end mb-4">
+        <button
+          onClick={() => signOut({ callbackUrl: "/" })}
+          className="text-gray-600 hover:text-gray-400 transition-colors text-xs uppercase tracking-[0.2em] font-bold"
+        >
+          Sign Out
+        </button>
+      </div>
+
+      {/* Logo / Title */}
+      <div className="text-center mb-12">
+        <div className="flex items-center justify-center gap-3 mb-4">
+          <span className="text-5xl">♠</span>
+          <div>
+            <h1
+              className="text-4xl font-black uppercase tracking-[0.15em] leading-none"
+              style={{ color: "#c9a84c" }}
+            >
+              Poker Training
+            </h1>
+            <p className="text-gray-500 text-sm tracking-[0.3em] uppercase mt-1">
+              Learn · Play · Improve
+            </p>
+          </div>
+          <span className="text-5xl">♣</span>
+        </div>
+        <p className="text-gray-400 max-w-md text-sm leading-relaxed">
+          Practice Texas Hold&apos;em against AI opponents powered by different language models.
+          Each AI has a unique playing style — tight, loose, aggressive, or unpredictable.
+        </p>
+      </div>
+
+      {/* Mode selector */}
+      <div className="w-full max-w-2xl mb-8">
+        <h2 className="text-xs font-black text-gray-500 uppercase tracking-[0.3em] mb-4 text-center">
+          Choose Your Mode
+        </h2>
+        <div className="grid grid-cols-2 gap-3">
+          {MODES.map(mode => (
+            <button
+              key={mode.id}
+              onClick={() => setSelected(mode.id)}
+              className={`
+                relative p-4 rounded-2xl text-left transition-all duration-200 active:scale-[0.98]
+                bg-gradient-to-br ${mode.color}
+                ${selected === mode.id
+                  ? "ring-2 ring-yellow-400 shadow-[0_0_20px_rgba(234,179,8,0.2)]"
+                  : "ring-1 ring-white/5 opacity-70 hover:opacity-90"
+                }
+              `}
+            >
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-xl">{mode.icon}</span>
+                <span className="font-black text-white text-sm uppercase tracking-wider">{mode.label}</span>
+              </div>
+              <p className="text-[11px] text-gray-300 leading-relaxed">{mode.description}</p>
+              {selected === mode.id && (
+                <div className="absolute top-3 right-3 w-4 h-4 rounded-full bg-yellow-400 flex items-center justify-center">
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="#000" stroke="none">
+                    <path d="M20 6L9 17l-5-5" strokeWidth="3" stroke="#000" fill="none" />
+                  </svg>
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* AI players preview */}
+      <div className="w-full max-w-2xl mb-8">
+        <h2 className="text-xs font-black text-gray-500 uppercase tracking-[0.3em] mb-4 text-center">
+          Your Opponents (AI-Powered)
+        </h2>
+        <div className="flex gap-3 justify-center flex-wrap">
+          {[
+            { name: "Viktor", style: "TAG", model: "Gemini / GPT / Grok", color: "from-red-900" },
+            { name: "Maria", style: "LAG", model: "Gemini / DeepSeek / Kimi", color: "from-orange-900" },
+            { name: "Chen", style: "Nit", model: "GPT-4.1 / Grok / MiniMax", color: "from-cyan-900" },
+            { name: "Sofia", style: "Fish", model: "Gemini / GPT / DeepSeek", color: "from-pink-900" },
+            { name: "James", style: "Maniac", model: "Kimi / Grok / MiniMax", color: "from-yellow-900" },
+          ].map(ai => (
+            <div
+              key={ai.name}
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl bg-gradient-to-b ${ai.color} to-gray-900 border border-white/5`}
+            >
+              <div className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center text-white font-black text-xs border border-yellow-800/40">
+                {ai.name[0]}
+              </div>
+              <span className="text-white text-[11px] font-bold">{ai.name}</span>
+              <span className="text-yellow-500 text-[9px] font-bold uppercase tracking-wider">{ai.style}</span>
+              <span className="text-gray-500 text-[8px]">{ai.model}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Resume sessions */}
+      {resumable.length > 0 && (
+        <div className="w-full max-w-2xl mb-8">
+          <h2 className="text-xs font-black text-gray-500 uppercase tracking-[0.3em] mb-4 text-center">
+            Resume a Previous Game
+          </h2>
+          <div className="flex flex-col gap-2">
+            {resumable.slice(0, 5).map(s => {
+              const profit = s.finalStack - s.startStack;
+              const profitStr = profit >= 0 ? `+$${profit.toLocaleString()}` : `-$${Math.abs(profit).toLocaleString()}`;
+              const date = new Date(s.startedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => router.push(`/game?mode=${s.mode}&session=${s.id}&resume=true`)}
+                  className="flex items-center justify-between px-4 py-3 rounded-xl ring-1 ring-white/10 hover:ring-yellow-500/50 hover:bg-white/5 transition-all text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{MODE_ICONS[s.mode]}</span>
+                    <div>
+                      <div className="text-white text-sm font-bold capitalize">{s.mode} mode</div>
+                      <div className="text-gray-500 text-xs">{date} · {s.handsPlayed} hands played</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <div className="text-xs text-gray-400">Stack</div>
+                      <div className="text-sm font-bold" style={{ color: profit >= 0 ? "#4ade80" : "#f87171" }}>
+                        ${s.finalStack.toLocaleString()} <span className="text-xs font-normal">({profitStr})</span>
+                      </div>
+                    </div>
+                    <div className="text-yellow-500 text-xs font-bold uppercase tracking-wider">Resume →</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Quiz section */}
+      <div className="w-full max-w-2xl mb-8">
+        <h2 className="text-xs font-black text-gray-500 uppercase tracking-[0.3em] mb-4 text-center">
+          Drill Mode
+        </h2>
+        <a
+          href="/quiz"
+          className="flex items-center gap-4 px-5 py-4 rounded-2xl ring-1 ring-white/10 hover:ring-yellow-500/50 hover:bg-white/5 transition-all group"
+          style={{ background: "rgba(201,168,76,0.05)" }}
+        >
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0" style={{ background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.2)" }}>
+            🃏
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-black text-white text-sm uppercase tracking-wider">Pre-flop Quiz</span>
+              <span className="text-[9px] font-black px-1.5 py-0.5 rounded text-yellow-400 uppercase tracking-wider" style={{ background: "rgba(201,168,76,0.15)" }}>New</span>
+            </div>
+            <p className="text-[11px] text-gray-400 leading-relaxed">
+              Test your pre-flop decisions — raise, call, or fold? 40+ GTO-based scenarios covering every position.
+            </p>
+          </div>
+          <div className="text-yellow-600 group-hover:text-yellow-400 transition-colors font-black text-lg">→</div>
+        </a>
+      </div>
+
+      {/* Start button */}
+      <button
+        onClick={startGame}
+        disabled={loading}
+        className="px-12 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-base transition-all active:scale-95 hover:brightness-110 disabled:opacity-50"
+        style={{
+          background: "linear-gradient(135deg, #78350f, #c9a84c, #78350f)",
+          backgroundSize: "200% 100%",
+          color: "#000",
+          boxShadow: "0 4px 30px rgba(201,168,76,0.4), 0 0 60px rgba(201,168,76,0.1)",
+        }}
+      >
+        {loading ? "Starting..." : "Deal Me In →"}
+      </button>
+
+      {/* Stats link */}
+      <a
+        href="/stats"
+        className="mt-6 text-gray-600 hover:text-yellow-500 transition-colors text-xs uppercase tracking-[0.2em] font-bold"
+      >
+        View My Stats →
+      </a>
+
+      {/* Download app */}
+      <a
+        href="/PokerTraining.apk"
+        download="PokerTraining.apk"
+        className="mt-3 flex items-center gap-2 text-gray-700 hover:text-green-400 transition-colors text-xs uppercase tracking-[0.2em] font-bold"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Download Android App
+      </a>
+    </main>
+  );
+}

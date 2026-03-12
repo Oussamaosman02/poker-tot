@@ -138,7 +138,7 @@ export default function StatsPage() {
             <p className="text-gray-500 text-xs mt-1">{stats?.sessionsPlayed ?? 0} sessions · {stats?.totalHands ?? 0} hands played</p>
           </div>
           <Link
-            href="/"
+            href="/home"
             className="text-gray-500 hover:text-yellow-400 transition-colors text-xs font-bold uppercase tracking-widest border border-gray-700 hover:border-yellow-700 px-4 py-2 rounded-lg"
           >
             ← Play
@@ -149,7 +149,7 @@ export default function StatsPage() {
           <div className="text-center py-20">
             <div className="text-5xl mb-4">♠</div>
             <p className="text-gray-500 text-sm">No hands played yet.</p>
-            <Link href="/" className="mt-4 inline-block text-yellow-500 font-bold text-sm hover:text-yellow-400">
+            <Link href="/home" className="mt-4 inline-block text-yellow-500 font-bold text-sm hover:text-yellow-400">
               Start Playing →
             </Link>
           </div>
