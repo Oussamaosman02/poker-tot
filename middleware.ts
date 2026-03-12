@@ -8,11 +8,8 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const { pathname } = req.nextUrl;
 
-  // Always allow auth API routes and public API routes
-  if (pathname.startsWith("/api/auth")) return NextResponse.next();
-  if (pathname.startsWith("/api/register")) return NextResponse.next();
-  if (pathname.startsWith("/api/ai-action")) return NextResponse.next();
-  if (pathname.startsWith("/api/hand-review")) return NextResponse.next();
+  // All API routes handle their own auth — never redirect them
+  if (pathname.startsWith("/api/")) return NextResponse.next();
 
   // Allow static file downloads (APK, etc.)
   if (pathname.endsWith(".apk")) return NextResponse.next();
