@@ -14,6 +14,9 @@ export default auth((req) => {
   if (pathname.startsWith("/api/ai-action")) return NextResponse.next();
   if (pathname.startsWith("/api/hand-review")) return NextResponse.next();
 
+  // Allow static file downloads (APK, etc.)
+  if (pathname.endsWith(".apk")) return NextResponse.next();
+
   // Public pages
   const isPublicPage = pathname === "/" || pathname === "/login" || pathname === "/register";
 
