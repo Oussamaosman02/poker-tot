@@ -190,7 +190,14 @@ Pure TypeScript — no React. Ported 1:1 to `mobile/src/lib/`. **Update both whe
 
 ## Android APK
 
-The APK is committed at `public/PokerTraining.apk` and served at `/PokerTraining.apk` (linked from the landing page and `/home`). Rebuild with `bash build-apk.sh` in `mobile/` then copy the output to `public/`.
+The APK is committed at `public/PokerTraining.apk` and served at `/PokerTraining.apk` (linked from the landing page and `/home`).
+
+**After any mobile code change, always rebuild and update:**
+```bash
+cd ../mobile && bash build-apk.sh
+cp ~/Desktop/PokerTraining.apk public/PokerTraining.apk
+git add public/PokerTraining.apk && git commit -m "fix: rebuild APK ..." && git push
+```
 
 ---
 
